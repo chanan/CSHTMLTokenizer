@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <OutputType>library</OutputType>
+    <IsPackable>true</IsPackable>
+    <LangVersion>7.3</LangVersion>
+    <PackageId>CSHTMLTokenizer</PackageId>
+    <Version>0.1.4</Version>
+    <Authors>Chanan Braunstein</Authors>
+    <Title>CSHTML Tokenizer</Title>
+    <Description>Tokenize CSHTML</Description>
+    <PackageProjectUrl>https://github.com/chanan/CSHTMLTokenizer</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/chanan/CSHTMLTokenizer</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Stateless" Version="4.2.1" />
+  </ItemGroup>
+
+</Project>
