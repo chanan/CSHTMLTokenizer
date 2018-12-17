@@ -1,23 +1,22 @@
-﻿using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
 {
     public class AttributeName : IToken
     {
-        public StringBuilder Name = new StringBuilder();
+        public string Name => _name.ToString();
         public TokenType TokenType => TokenType.AttributeName;
-
-        public bool IsEmpty => Name.Length == 0;
+        public bool IsEmpty => _name.Length == 0;
+        public StringBuilder _name = new StringBuilder();
 
         public void Append(char ch)
         {
-            Name.Append(ch);
+            _name.Append(ch);
         }
 
         public string ToHtml()
         {
-            return " " + Name.ToString();
+            return " " + Name;
         }
     }
 }

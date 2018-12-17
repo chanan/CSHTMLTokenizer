@@ -1,22 +1,22 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
 {
     public class EndTag : IToken
     {
-        public StringBuilder Name = new StringBuilder();
+        public string Name => _name.ToString();
         public TokenType TokenType => TokenType.EndTag;
-        public bool IsEmpty => Name.Length == 0;
+        public bool IsEmpty => _name.Length == 0;
+        public StringBuilder _name = new StringBuilder();
         public string ToHtml()
         {
-            return "</" + Name.ToString() + ">";
+            return "</" + Name + ">";
         }
 
         public void Append(Char ch)
         {
-            Name.Append(ch);
+            _name.Append(ch);
         }
     }
 }

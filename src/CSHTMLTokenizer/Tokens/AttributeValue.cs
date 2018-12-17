@@ -4,20 +4,21 @@ namespace CSHTMLTokenizer.Tokens
 {
     public class AttributeValue : IToken
     {
-        public StringBuilder Value = new StringBuilder();
+        public string Value => _value.ToString();
         public enum QuoteMarkType {  Unquoted, DoubleQuote, SingleQuote}
         public TokenType TokenType => TokenType.AttributeValue;
         public QuoteMarkType QuoteMark { get; set; }
-        public bool IsEmpty => Value.Length == 0;
+        public bool IsEmpty => _value.Length == 0;
+        private StringBuilder _value = new StringBuilder();
         public void Append(char ch)
         {
-            Value.Append(ch);
+            _value.Append(ch);
         }
 
         public string ToHtml()
         {
             var quote = GetQuoteChar();
-            return "=" + quote + Value.ToString() + quote;
+            return "=" + quote + Value + quote;
         }
 
         private string GetQuoteChar()

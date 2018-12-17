@@ -6,16 +6,17 @@ namespace CSHTMLTokenizer.Tokens
 {
     public class StartTag : IToken
     {
-        public StringBuilder Name = new StringBuilder();
+        public string Name => _name.ToString();
         public bool IsSelfClosingTag { get; set; } = false;
         public TokenType TokenType => TokenType.StartTag;
         public List<IToken> Attributes { get; set; } = new List<IToken>();
-        public bool IsEmpty => Name.Length == 0;
+        public bool IsEmpty => _name.Length == 0;
+        private StringBuilder _name = new StringBuilder();
 
         public string ToHtml()
         {
             var sb = new StringBuilder();
-            sb.Append('<').Append(Name.ToString());
+            sb.Append('<').Append(Name);
             if(Attributes.Count > 0)
             {
                 foreach (var token in Attributes) sb.Append(token.ToHtml());
@@ -27,7 +28,7 @@ namespace CSHTMLTokenizer.Tokens
 
         public void Append(Char ch)
         {
-            Name.Append(ch);
+            _name.Append(ch);
         }
     }
 }

@@ -4,18 +4,18 @@ namespace CSHTMLTokenizer.Tokens
 {
     public class Text : IToken
     {
-        public StringBuilder Content = new StringBuilder();
+        public string Content => _content.ToString();
         public TokenType TokenType => TokenType.Text;
-        public bool IsEmpty => Content.Length == 0;
-
+        public bool IsEmpty => _content.Length == 0;
+        private StringBuilder _content = new StringBuilder();
         public void Append(char ch)
         {
-            Content.Append(ch);
+            _content.Append(ch);
         }
 
         public string ToHtml()
         {
-            return Content.ToString();
+            return Content;
         }
     }
 }
