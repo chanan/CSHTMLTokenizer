@@ -4,9 +4,16 @@ CSHTMLTokenizer tokenizes CSHTML into tokens. For now (V0.1.4) only HTML is toke
 based on the [HTML Tokenization spec](https://html.spec.whatwg.org/multipage/parsing.html#tokenization). Only those
 parts that are relevant to CSHTML tokenization is supported:
 
+## Html
+
 * Data
 * Tags
 * Attributes
+
+## CSHtml
+
+* Variables in attributes @
+* Statements in attributes @(...)
 
 ## Usage
 

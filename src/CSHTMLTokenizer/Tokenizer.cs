@@ -114,8 +114,48 @@ namespace CSHTMLTokenizer
             foreach (var ch in str) _machine.Fire(_gotCharTrigger, ch);
             _machine.Fire(Trigger.EOF);
             Tokens = RemoveEmpty(Tokens);
+            FixEmptyAttributes(Tokens);
             FixSelfClosingTags(Tokens);
+            TokenizeCSHTML(Tokens);
+            TokenizeAttributes(Tokens);
             return Tokens;
+        }
+
+        private void FixEmptyAttributes(List<IToken> tokens)
+        {
+            var startTokens = Tokens.Where(t => t.TokenType == TokenType.StartTag);
+            foreach(var startToken in startTokens)
+            {
+                var startTag = (StartTag)startToken;
+                startTag.Attributes = RemoveEmpty(startTag.Attributes);
+            }
+        }
+
+        private void TokenizeAttributes(List<IToken> tokens)
+        {
+            var startTokens = Tokens.Where(t => t.TokenType == TokenType.StartTag);
+            foreach (var startToken in startTokens)
+            {
+                var startTag = (StartTag)startToken;
+                var attributeValues = startTag.Attributes.Where(t => t.TokenType == TokenType.AttributeValue);
+                foreach(var token in attributeValues)
+                {
+                    var attributeValue = (AttributeValue)token;
+                    var csTokens = AttributeValueTokenizer.Tokenize(attributeValue.Value);
+                    attributeValue.Tokens = csTokens;
+                }
+            }
+        }
+
+        private void TokenizeCSHTML(List<IToken> tokens)
+        {
+            var textTokens = Tokens.Where(t => t.TokenType == TokenType.Text);
+            foreach(var token in textTokens)
+            {
+                var text = (Text)token;
+                var csTokens = CSTokenizer.Tokenize(text.Content);
+                text.Tokens = csTokens;
+            }
         }
 
         //This is needed because Chrome removes the / from self closing tags
@@ -256,17 +296,17 @@ namespace CSHTMLTokenizer
             }
             else if (IsQuotationMark(ch))
             {
-                attributeValue.QuoteMark = AttributeValue.QuoteMarkType.DoubleQuote;
+                attributeValue.QuoteMark = QuoteMarkType.DoubleQuote;
                 _machine.Fire(Trigger.AttributeValue);
                 return;
             }
             else if (IsApostrophe(ch))
             {
-                attributeValue.QuoteMark = AttributeValue.QuoteMarkType.SingleQuote;
+                attributeValue.QuoteMark = QuoteMarkType.SingleQuote;
                 _machine.Fire(Trigger.AttributeValue);
                 return;
             }
-            attributeValue.QuoteMark = AttributeValue.QuoteMarkType.Unquoted;
+            attributeValue.QuoteMark = QuoteMarkType.Unquoted;
             _machine.Fire(Trigger.AttributeValue);
             _machine.Fire(_gotCharTrigger, ch);
         }
@@ -275,17 +315,17 @@ namespace CSHTMLTokenizer
         {
             var tag = ((StartTag)GetCurrentToken());
             var attributeValue = (AttributeValue)tag.Attributes[tag.Attributes.Count - 1];
-            if (IsQuotationMark(ch) && (attributeValue.QuoteMark == AttributeValue.QuoteMarkType.DoubleQuote))
+            if (IsQuotationMark(ch) && (attributeValue.QuoteMark == QuoteMarkType.DoubleQuote))
             {
                 _machine.Fire(Trigger.AfterAttributeValue);
                 return;
             }
-            else if (IsApostrophe(ch) && (attributeValue.QuoteMark == AttributeValue.QuoteMarkType.SingleQuote))
+            else if (IsApostrophe(ch) && (attributeValue.QuoteMark == QuoteMarkType.SingleQuote))
             {
                 _machine.Fire(Trigger.AfterAttributeValue);
                 return;
             }
-            else if (IsGreaterThanSign(ch) && (attributeValue.QuoteMark == AttributeValue.QuoteMarkType.Unquoted))
+            else if (IsGreaterThanSign(ch) && (attributeValue.QuoteMark == QuoteMarkType.Unquoted))
             {
                 _machine.Fire(Trigger.Data);
                 return;

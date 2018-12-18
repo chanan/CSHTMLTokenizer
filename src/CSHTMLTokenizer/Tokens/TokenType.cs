@@ -11,6 +11,8 @@ namespace CSHTMLTokenizer.Tokens
         Text,
         AttributeName,
         AttributeValue,
-        EOF
+        EOF,
+        QuotedString,
+        AttributeValueStatement
     }
 }

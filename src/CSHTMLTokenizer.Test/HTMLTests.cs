@@ -89,7 +89,7 @@ namespace CSHTMLTokenizer.Test
 
             Assert.AreEqual(TokenType.AttributeValue, ((StartTag)tokens[1]).Attributes[1].TokenType);
             Assert.AreEqual("boldClass", ((AttributeValue)((StartTag)tokens[1]).Attributes[1]).Value);
-            Assert.AreEqual(AttributeValue.QuoteMarkType.SingleQuote, ((AttributeValue)((StartTag)tokens[1]).Attributes[1]).QuoteMark);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, ((AttributeValue)((StartTag)tokens[1]).Attributes[1]).QuoteMark);
         
             Assert.AreEqual(TokenType.Text, tokens[2].TokenType);
             Assert.AreEqual("bold", ((Text)tokens[2]).Content);

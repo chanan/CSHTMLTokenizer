@@ -1,25 +1,24 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
 {
-    public class AttributeValue : IToken
+    class QuotedString : IToken
     {
-        public string Value => _value.ToString();
-        public TokenType TokenType => TokenType.AttributeValue;
+        public TokenType TokenType => TokenType.QuotedString;
+        public bool IsEmpty => _content.Length == 0;
+        private StringBuilder _content = new StringBuilder();
         public QuoteMarkType QuoteMark { get; set; }
-        public bool IsEmpty => _value.Length == 0;
-        private StringBuilder _value = new StringBuilder();
-        public List<IToken> Tokens { get; set; } = new List<IToken>();
         public void Append(char ch)
         {
-            _value.Append(ch);
+            _content.Append(ch);
         }
 
         public string ToHtml()
         {
             var quote = GetQuoteChar();
-            return "=" + quote + Value + quote;
+            return quote + _content.ToString() + quote;
         }
 
         private string GetQuoteChar()
@@ -34,7 +33,7 @@ namespace CSHTMLTokenizer.Tokens
                     return "'";
                 default:
                     return string.Empty;
-            }  
+            }
         }
     }
 }

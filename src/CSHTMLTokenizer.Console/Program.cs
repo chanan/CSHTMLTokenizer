@@ -8,7 +8,7 @@ namespace CSHTMLTokenizer.Console
     {
         static void Main(string[] args)
         {
-            var tokens = Tokenizer.Parse("This is a test!<br>This is a <b n='v'>bold</b>");
+            var tokens = Tokenizer.Parse("This is an <div onclick='@(() => onclick(\"hello\"))' /> test");
             System.Console.WriteLine(Print(tokens));
             System.Console.ReadKey();
         }
