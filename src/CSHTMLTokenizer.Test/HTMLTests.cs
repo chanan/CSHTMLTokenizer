@@ -97,5 +97,25 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(TokenType.EndTag, tokens[3].TokenType);
             Assert.AreEqual("div", ((EndTag)tokens[3]).Name);
         }
+
+        [TestMethod]
+        public void TestQuotedString()
+        {
+            var tokens = Tokenizer.Parse("This is a 'quoted string'");
+            Assert.AreEqual(1, tokens.Count);
+
+            var text = ((Text)tokens[0]);
+            Assert.AreEqual(TokenType.Text, text.TokenType);
+            Assert.AreEqual("This is a 'quoted string'", text.Content);
+
+            Assert.AreEqual(2, text.Tokens.Count);
+
+            Assert.AreEqual(TokenType.Text, text.Tokens[0].TokenType);
+            Assert.AreEqual("This is a ", ((Text)text.Tokens[0]).Content);
+
+            Assert.AreEqual(TokenType.QuotedString, text.Tokens[1].TokenType);
+            Assert.AreEqual("quoted string", ((QuotedString)text.Tokens[1]).Content);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, ((QuotedString)text.Tokens[1]).QuoteMark);
+        }
     }
 }

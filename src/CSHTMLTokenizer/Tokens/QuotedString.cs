@@ -4,11 +4,12 @@ using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
 {
-    class QuotedString : IToken
+    public class QuotedString : IToken
     {
+        private StringBuilder _content = new StringBuilder();
+        public string Content => _content.ToString();
         public TokenType TokenType => TokenType.QuotedString;
         public bool IsEmpty => _content.Length == 0;
-        private StringBuilder _content = new StringBuilder();
         public QuoteMarkType QuoteMark { get; set; }
         public void Append(char ch)
         {
