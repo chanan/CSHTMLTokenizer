@@ -40,6 +40,8 @@ namespace CSHTMLTokenizer.Tokens
                     return "page";
                 case CSLineType.Using:
                     return "using";
+                case CSLineType.Typeparam:
+                    return "typeparam";
                 default:
                     return "";
             }

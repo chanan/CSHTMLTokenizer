@@ -8,6 +8,7 @@
         Layout,
         Page,
         Using,
-        AddTagHelper
+        AddTagHelper,
+        Typeparam
     }
 }

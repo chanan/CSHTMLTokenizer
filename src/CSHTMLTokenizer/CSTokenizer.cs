@@ -70,7 +70,8 @@ namespace CSHTMLTokenizer
                 {
                     var token = new CSBlockStart
                     {
-                        IsFunctions = true
+                        IsFunctions = true,
+                        IsOpenBrace = true
                     };
                     Tokens.Add(token);
                     _machine.Fire(Trigger.Data);
@@ -80,7 +81,8 @@ namespace CSHTMLTokenizer
                 {
                     var token = new CSBlockStart
                     {
-                        IsFunctions = false
+                        IsFunctions = false,
+                        IsOpenBrace = _buffer.ToString().StartsWith("@ {")
                     };
                     Tokens.Add(token);
                     _machine.Fire(Trigger.Data);
@@ -156,6 +158,16 @@ namespace CSHTMLTokenizer
                 var token = new CSLine
                 {
                     LineType = CSLineType.AddTagHelper
+                };
+                Tokens.Add(token);
+                _machine.Fire(Trigger.CSLine);
+                return;
+            }
+            if (_buffer.ToString().Trim() == "typeparam")
+            {
+                var token = new CSLine
+                {
+                    LineType = CSLineType.Typeparam
                 };
                 Tokens.Add(token);
                 _machine.Fire(Trigger.CSLine);

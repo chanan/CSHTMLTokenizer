@@ -8,7 +8,16 @@ namespace CSHTMLTokenizer.Console
     {
         static void Main(string[] args)
         {
-            var str = "This is an <div onclick='@(() => onclick(\"hello\"))' /> test";
+            var str = @"@page '/'
+
+@foreach(var item in list) 
+{
+    <h1></h1>
+}
+
+@ functions{
+    var list = new List<String /> { 'hello', 'world' };
+}";
             var tokens = Tokenizer.Parse(str);
             System.Console.WriteLine(Print(tokens));
             System.Console.ReadKey();

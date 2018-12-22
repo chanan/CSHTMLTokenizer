@@ -9,6 +9,7 @@ namespace CSHTMLTokenizer.Tokens
         public TokenType TokenType => TokenType.CSBlockStart;
         public bool IsEmpty => false;
         public bool IsFunctions { get; set; }
+        public bool IsOpenBrace { get; set; }
         public Guid Id { get; } = Guid.NewGuid();
 
         public void Append(char ch)
@@ -21,7 +22,7 @@ namespace CSHTMLTokenizer.Tokens
             var sb = new StringBuilder();
             sb.Append('@');
             if (IsFunctions) sb.Append("functions");
-            sb.Append(" {");
+            if(IsOpenBrace) sb.Append(" {");
             return sb.ToString();
         }
     }
