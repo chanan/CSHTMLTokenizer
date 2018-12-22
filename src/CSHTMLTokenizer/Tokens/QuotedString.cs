@@ -11,6 +11,10 @@ namespace CSHTMLTokenizer.Tokens
         public TokenType TokenType => TokenType.QuotedString;
         public bool IsEmpty => _content.Length == 0;
         public QuoteMarkType QuoteMark { get; set; }
+        public Guid Id { get; } = Guid.NewGuid();
+        public bool HasParentheses { get; set; }
+        public bool IsCSStatement { get; set; }
+
         public void Append(char ch)
         {
             _content.Append(ch);
@@ -19,7 +23,14 @@ namespace CSHTMLTokenizer.Tokens
         public string ToHtml()
         {
             var quote = GetQuoteChar();
-            return quote + _content.ToString() + quote;
+            var sb = new StringBuilder();
+            sb.Append(quote);
+            if(IsCSStatement) sb.Append('@');
+            if (HasParentheses) sb.Append('(');
+            sb.Append(_content);
+            if (HasParentheses) sb.Append(')');
+            sb.Append(quote);
+            return sb.ToString();
         }
 
         private string GetQuoteChar()

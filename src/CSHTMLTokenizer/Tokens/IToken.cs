@@ -1,4 +1,6 @@
-﻿namespace CSHTMLTokenizer.Tokens
+﻿using System;
+
+namespace CSHTMLTokenizer.Tokens
 {
     public interface IToken
     {
@@ -6,5 +8,6 @@
         TokenType TokenType { get; }
         void Append(char ch);
         bool IsEmpty { get; }
+        Guid Id { get; }
     }
 }

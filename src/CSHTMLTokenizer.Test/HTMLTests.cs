@@ -82,14 +82,12 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual("div", ((StartTag)tokens[1]).Name);
             Assert.AreEqual(false, ((StartTag)tokens[1]).IsSelfClosingTag);
 
-            Assert.AreEqual(2, ((StartTag)tokens[1]).Attributes.Count);
+            Assert.AreEqual(1, ((StartTag)tokens[1]).Attributes.Count);
 
-            Assert.AreEqual(TokenType.AttributeName, ((StartTag)tokens[1]).Attributes[0].TokenType);
-            Assert.AreEqual("class", ((AttributeName)((StartTag)tokens[1]).Attributes[0]).Name);
-
-            Assert.AreEqual(TokenType.AttributeValue, ((StartTag)tokens[1]).Attributes[1].TokenType);
-            Assert.AreEqual("boldClass", ((AttributeValue)((StartTag)tokens[1]).Attributes[1]).Value);
-            Assert.AreEqual(QuoteMarkType.SingleQuote, ((AttributeValue)((StartTag)tokens[1]).Attributes[1]).QuoteMark);
+            Assert.AreEqual(TokenType.Attribute, ((StartTag)tokens[1]).Attributes[0].TokenType);
+            Assert.AreEqual("class", ((AttributeToken)((StartTag)tokens[1]).Attributes[0]).Name);
+            Assert.AreEqual("boldClass", ((AttributeToken)((StartTag)tokens[1]).Attributes[0]).Value.Content);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, ((AttributeToken)((StartTag)tokens[1]).Attributes[0]).Value.QuoteMark);
         
             Assert.AreEqual(TokenType.Text, tokens[2].TokenType);
             Assert.AreEqual("bold", ((Text)tokens[2]).Content);
@@ -102,20 +100,14 @@ namespace CSHTMLTokenizer.Test
         public void TestQuotedString()
         {
             var tokens = Tokenizer.Parse("This is a 'quoted string'");
-            Assert.AreEqual(1, tokens.Count);
+            Assert.AreEqual(2, tokens.Count);
 
-            var text = ((Text)tokens[0]);
-            Assert.AreEqual(TokenType.Text, text.TokenType);
-            Assert.AreEqual("This is a 'quoted string'", text.Content);
+            Assert.AreEqual(TokenType.Text, tokens[0].TokenType);
+            Assert.AreEqual("This is a ", ((Text)tokens[0]).Content);
 
-            Assert.AreEqual(2, text.Tokens.Count);
-
-            Assert.AreEqual(TokenType.Text, text.Tokens[0].TokenType);
-            Assert.AreEqual("This is a ", ((Text)text.Tokens[0]).Content);
-
-            Assert.AreEqual(TokenType.QuotedString, text.Tokens[1].TokenType);
-            Assert.AreEqual("quoted string", ((QuotedString)text.Tokens[1]).Content);
-            Assert.AreEqual(QuoteMarkType.SingleQuote, ((QuotedString)text.Tokens[1]).QuoteMark);
+            Assert.AreEqual(TokenType.QuotedString, tokens[1].TokenType);
+            Assert.AreEqual("quoted string", ((QuotedString)tokens[1]).Content);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, ((QuotedString)tokens[1]).QuoteMark);
         }
     }
 }

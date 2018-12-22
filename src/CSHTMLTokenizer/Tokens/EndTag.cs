@@ -8,6 +8,8 @@ namespace CSHTMLTokenizer.Tokens
         public string Name => _name.ToString();
         public TokenType TokenType => TokenType.EndTag;
         public bool IsEmpty => _name.Length == 0;
+        public Guid Id { get; } = Guid.NewGuid();
+
         public StringBuilder _name = new StringBuilder();
         public string ToHtml()
         {

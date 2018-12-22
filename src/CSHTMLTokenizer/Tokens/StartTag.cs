@@ -11,6 +11,8 @@ namespace CSHTMLTokenizer.Tokens
         public TokenType TokenType => TokenType.StartTag;
         public List<IToken> Attributes { get; set; } = new List<IToken>();
         public bool IsEmpty => _name.Length == 0;
+        public Guid Id { get; } = Guid.NewGuid();
+
         private StringBuilder _name = new StringBuilder();
 
         public string ToHtml()

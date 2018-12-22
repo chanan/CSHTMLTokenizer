@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
@@ -9,7 +10,8 @@ namespace CSHTMLTokenizer.Tokens
         public TokenType TokenType => TokenType.Text;
         public bool IsEmpty => _content.Length == 0;
         private StringBuilder _content = new StringBuilder();
-        public List<IToken> Tokens { get; set; } = new List<IToken>();
+        public Guid Id { get; } = Guid.NewGuid();
+
         public void Append(char ch)
         {
             _content.Append(ch);
@@ -17,10 +19,7 @@ namespace CSHTMLTokenizer.Tokens
 
         public string ToHtml()
         {
-            var sb = new StringBuilder();
-            if (Tokens.Count == 0) return _content.ToString();
-            foreach (var token in Tokens) sb.Append(token.ToHtml());
-            return sb.ToString();
+            return _content.ToString();
         }
     }
 }

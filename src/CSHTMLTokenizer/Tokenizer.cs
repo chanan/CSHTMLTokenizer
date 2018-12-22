@@ -19,6 +19,8 @@ namespace CSHTMLTokenizer
 
         private readonly StateMachine<State, Trigger>.TriggerWithParameters<char> _gotCharTrigger;
 
+        private int _parens = 0;
+
         public List<IToken> Tokens { get; set; } = new List<IToken>();
 
         public Tokenizer()
@@ -117,7 +119,6 @@ namespace CSHTMLTokenizer
             FixEmptyAttributes(Tokens);
             FixSelfClosingTags(Tokens);
             TokenizeCSHTML(Tokens);
-            TokenizeAttributes(Tokens);
             return Tokens;
         }
 
@@ -131,31 +132,36 @@ namespace CSHTMLTokenizer
             }
         }
 
-        private void TokenizeAttributes(List<IToken> tokens)
-        {
-            var startTokens = Tokens.Where(t => t.TokenType == TokenType.StartTag);
-            foreach (var startToken in startTokens)
-            {
-                var startTag = (StartTag)startToken;
-                var attributeValues = startTag.Attributes.Where(t => t.TokenType == TokenType.AttributeValue);
-                foreach(var token in attributeValues)
-                {
-                    var attributeValue = (AttributeValue)token;
-                    var csTokens = AttributeValueTokenizer.Tokenize(attributeValue.Value);
-                    attributeValue.Tokens = csTokens;
-                }
-            }
-        }
-
         private void TokenizeCSHTML(List<IToken> tokens)
         {
             var textTokens = Tokens.Where(t => t.TokenType == TokenType.Text);
+            var dict = new Dictionary<IToken, List<IToken>>();
             foreach(var token in textTokens)
             {
                 var text = (Text)token;
                 var csTokens = CSTokenizer.Tokenize(text.Content);
-                text.Tokens = csTokens;
+                dict.Add(text, csTokens);
             }
+            foreach(var kvp in dict)
+            {
+                Tokens = ReplaceTokenWithListOfTokens(Tokens, kvp.Key, kvp.Value);
+            }
+        }
+
+        private List<IToken> ReplaceTokenWithListOfTokens(List<IToken> tokens, IToken key, List<IToken> value)
+        {
+            var ret = new List<IToken>();
+            foreach(var token in Tokens)
+            {
+                if (token.Id != key.Id)
+                    ret.Add(token);
+                else
+                {
+                    ret.AddRange(value);
+                }
+
+            }
+            return ret;
         }
 
         //This is needed because Chrome removes the / from self closing tags
@@ -233,7 +239,7 @@ namespace CSHTMLTokenizer
 
         private void OnBeforeAttributeName()
         {
-            ((StartTag)GetCurrentToken()).Attributes.Add(new AttributeName());
+            ((StartTag)GetCurrentToken()).Attributes.Add(new Tokens.AttributeToken());
         }
 
         private void OnGotCharBeforeAttributeName(char ch)
@@ -282,31 +288,31 @@ namespace CSHTMLTokenizer
 
         private void OnBeforeAttributeValue()
         {
-            ((StartTag)GetCurrentToken()).Attributes.Add(new AttributeValue());
+            var tag = ((StartTag)GetCurrentToken());
+            ((AttributeToken)tag.Attributes[tag.Attributes.Count - 1]).NameOnly = false;
         }
 
         private void OnGotCharBeforeAttributeValue(char ch)
         {
             var tag = ((StartTag)GetCurrentToken());
-            var attributeValue = (AttributeValue)tag.Attributes[tag.Attributes.Count - 1];
+            var attribute = (AttributeToken)tag.Attributes[tag.Attributes.Count - 1];
             if (IsWhiteSpace(ch))
             {
-                NoOp();
                 return;
             }
             else if (IsQuotationMark(ch))
             {
-                attributeValue.QuoteMark = QuoteMarkType.DoubleQuote;
+                attribute.Value.QuoteMark = QuoteMarkType.DoubleQuote;
                 _machine.Fire(Trigger.AttributeValue);
                 return;
             }
             else if (IsApostrophe(ch))
             {
-                attributeValue.QuoteMark = QuoteMarkType.SingleQuote;
+                attribute.Value.QuoteMark = QuoteMarkType.SingleQuote;
                 _machine.Fire(Trigger.AttributeValue);
                 return;
             }
-            attributeValue.QuoteMark = QuoteMarkType.Unquoted;
+            attribute.Value.QuoteMark = QuoteMarkType.Unquoted;
             _machine.Fire(Trigger.AttributeValue);
             _machine.Fire(_gotCharTrigger, ch);
         }
@@ -314,23 +320,49 @@ namespace CSHTMLTokenizer
         private void OnGotCharAttributeValue(char ch)
         {
             var tag = ((StartTag)GetCurrentToken());
-            var attributeValue = (AttributeValue)tag.Attributes[tag.Attributes.Count - 1];
-            if (IsQuotationMark(ch) && (attributeValue.QuoteMark == QuoteMarkType.DoubleQuote))
+            var attribute = (AttributeToken)tag.Attributes[tag.Attributes.Count - 1];
+            if (IsQuotationMark(ch) && (attribute.Value.QuoteMark == QuoteMarkType.DoubleQuote))
             {
                 _machine.Fire(Trigger.AfterAttributeValue);
                 return;
             }
-            else if (IsApostrophe(ch) && (attributeValue.QuoteMark == QuoteMarkType.SingleQuote))
+            else if (IsApostrophe(ch) && (attribute.Value.QuoteMark == QuoteMarkType.SingleQuote))
             {
                 _machine.Fire(Trigger.AfterAttributeValue);
                 return;
             }
-            else if (IsGreaterThanSign(ch) && (attributeValue.QuoteMark == QuoteMarkType.Unquoted))
+            else if (IsGreaterThanSign(ch) && (attribute.Value.QuoteMark == QuoteMarkType.Unquoted))
             {
                 _machine.Fire(Trigger.Data);
                 return;
             }
-            attributeValue.Append(ch);
+            else if (IsAtSign(ch) && attribute.Value.IsEmpty)
+            {
+                attribute.Value.IsCSStatement = true;
+                return;
+            }
+            else if (IsOpenParenthesis(ch) && attribute.Value.IsEmpty && attribute.Value.IsCSStatement && !attribute.Value.HasParentheses)
+            {
+                attribute.Value.HasParentheses = true;
+                return;
+            }
+            else if (IsOpenParenthesis(ch))
+            {
+                _parens++;
+                attribute.Value.Append(ch);
+                return;
+            }
+            else if (IsCloseParenthesis(ch) && attribute.Value.HasParentheses && _parens == 0)
+            {
+                return;
+            }
+            else if (IsCloseParenthesis(ch) && attribute.Value.HasParentheses && _parens != 0)
+            {
+                _parens--;
+                attribute.Value.Append(ch);
+                return;
+            }
+            attribute.Value.Append(ch);
         }
 
         private void OnGotCharAfterAttributeValue(char ch)
@@ -358,6 +390,9 @@ namespace CSHTMLTokenizer
         private bool IsEqualsSign(char ch) => ch == '=';
         private bool IsQuotationMark(char ch) => ch == '"';
         private bool IsApostrophe(char ch) => ch == '\'';
+        private bool IsAtSign(char ch) => ch == '@';
+        private bool IsOpenParenthesis(char ch) => ch == '(';
+        private bool IsCloseParenthesis(char ch) => ch == ')';
 
         public override string ToString()
         {

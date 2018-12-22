@@ -14,14 +14,13 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(TokenType.StartTag, tokens[1].TokenType);
             var startTag = (StartTag)tokens[1];
             Assert.AreEqual("b", startTag.Name);
-            Assert.AreEqual(2, startTag.Attributes.Count);
-            Assert.AreEqual(TokenType.AttributeValue, startTag.Attributes[1].TokenType);
-            var attributeValue = (AttributeValue)startTag.Attributes[1];
-            Assert.AreEqual(1, attributeValue.Tokens.Count);
-            Assert.AreEqual(TokenType.AttributeValueStatement, attributeValue.Tokens[0].TokenType);
-            var attributeValueStatement = (AttributeValueStatement)attributeValue.Tokens[0];
-            Assert.AreEqual(false, attributeValueStatement.HasParentheses);
-            Assert.AreEqual("testname", attributeValueStatement.Content);
+            Assert.AreEqual(1, startTag.Attributes.Count);
+            Assert.AreEqual(TokenType.Attribute, startTag.Attributes[0].TokenType);
+            var attribute = (AttributeToken)startTag.Attributes[0];
+            Assert.AreEqual("name", attribute.Name);
+            Assert.AreEqual(true, attribute.Value.IsCSStatement);
+            Assert.AreEqual(false, attribute.Value.HasParentheses);
+            Assert.AreEqual("testname", attribute.Value.Content);
         }
 
         [TestMethod]
@@ -32,14 +31,13 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(TokenType.StartTag, tokens[1].TokenType);
             var startTag = (StartTag)tokens[1];
             Assert.AreEqual("div", startTag.Name);
-            Assert.AreEqual(2, startTag.Attributes.Count);
-            Assert.AreEqual(TokenType.AttributeValue, startTag.Attributes[1].TokenType);
-            var attributeValue = (AttributeValue)startTag.Attributes[1];
-            Assert.AreEqual(1, attributeValue.Tokens.Count);
-            Assert.AreEqual(TokenType.AttributeValueStatement, attributeValue.Tokens[0].TokenType);
-            var attributeValueStatement = (AttributeValueStatement)attributeValue.Tokens[0];
-            Assert.AreEqual(true, attributeValueStatement.HasParentheses);
-            Assert.AreEqual("() => onclick(\"hello\")", attributeValueStatement.Content);
+            Assert.AreEqual(1, startTag.Attributes.Count);
+            Assert.AreEqual(TokenType.Attribute, startTag.Attributes[0].TokenType);
+            var attribute = (AttributeToken)startTag.Attributes[0];
+            Assert.AreEqual("onclick", attribute.Name);
+            Assert.AreEqual(true, attribute.Value.IsCSStatement);
+            Assert.AreEqual(true, attribute.Value.HasParentheses);
+            Assert.AreEqual("() => onclick(\"hello\")", attribute.Value.Content);
         }
     }
 }

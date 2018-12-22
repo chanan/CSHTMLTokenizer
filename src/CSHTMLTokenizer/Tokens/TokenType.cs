@@ -9,10 +9,11 @@ namespace CSHTMLTokenizer.Tokens
         Comment,
         Character,
         Text,
-        AttributeName,
-        AttributeValue,
+        Attribute,
         EOF,
         QuotedString,
-        AttributeValueStatement
+        CSBlockStart,
+        CSBlockEnd,
+        CSLine
     }
 }
