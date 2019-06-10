@@ -10,17 +10,15 @@ namespace CSHTMLTokenizer.Console
         {
             var str = @"@page '/'
 
-@foreach(var item in list) 
-{
-    <h1></h1>
+@foreach(var item in list) {
+    <h1>@item</h1>
 }
 
-@ functions{
-    var list = new List<String /> { 'hello', 'world' };
+@functions {
+    var list = new List<String> { 'hello', 'world' };
 }";
             var tokens = Tokenizer.Parse(str);
             System.Console.WriteLine(Print(tokens));
-            System.Console.ReadKey();
         }
 
         public static string Print(List<IToken> tokens)

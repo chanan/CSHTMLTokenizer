@@ -52,5 +52,73 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual("item", ((AttributeToken)startTag.Attributes[0]).Value.Content);
             Assert.AreEqual(TokenType.CSBlockEnd, tokens[4].TokenType);
         }
+
+        [TestMethod]
+        public void ForEachAndFunctions()
+        {
+            var str = @"@page '/'
+
+@foreach(var item in list) {
+    <h1>@item</h1>
+}
+
+@functions {
+    var list = new List<string> { 'hello', 'world' };
+}";
+
+            var tokens = Tokenizer.Parse(str);
+            Assert.AreEqual(20, tokens.Count);
+
+            Assert.AreEqual(TokenType.CSLine, tokens[0].TokenType);
+            Assert.AreEqual(CSLineType.Page, ((CSLine)tokens[0]).LineType);
+            Assert.AreEqual(" '/'", ((CSLine)tokens[0]).Line);
+
+            Assert.AreEqual(TokenType.CSBlockStart, tokens[2].TokenType);
+            Assert.AreEqual(false, ((CSBlockStart)tokens[2]).IsFunctions);
+            Assert.AreEqual(false, ((CSBlockStart)tokens[2]).IsOpenBrace);
+            Assert.AreEqual(false, ((CSBlockStart)tokens[2]).IsOpenBrace);
+
+            Assert.AreEqual(true, ((Text)tokens[3]).Content.StartsWith("foreach(var item in list)"));
+
+            Assert.AreEqual(TokenType.StartTag, tokens[4].TokenType);
+            var startTag = (StartTag)tokens[4];
+            Assert.AreEqual(startTag.IsSelfClosingTag, false);
+            Assert.AreEqual(startTag.Name, "h1");
+
+            Assert.AreEqual(TokenType.CSBlockStart, tokens[5].TokenType);
+
+            Assert.AreEqual("item", ((Text)tokens[6]).Content);
+
+            Assert.AreEqual(TokenType.EndTag, tokens[7].TokenType);
+
+            Assert.AreEqual(TokenType.Text, tokens[8].TokenType);
+
+            Assert.AreEqual(TokenType.CSBlockEnd, tokens[9].TokenType);
+
+            Assert.AreEqual(TokenType.Text, tokens[10].TokenType);
+
+            Assert.AreEqual(TokenType.CSBlockStart, tokens[11].TokenType);
+            Assert.AreEqual(true, ((CSBlockStart)tokens[11]).IsFunctions);
+
+            Assert.AreEqual(TokenType.Text, tokens[12].TokenType);
+            Assert.AreEqual(true, ((Text)tokens[12]).Content.Trim().StartsWith("var list"));
+
+            Assert.AreEqual(TokenType.StartTag, tokens[13].TokenType);
+            Assert.AreEqual("string", ((StartTag)tokens[13]).Name);
+
+            Assert.AreEqual(TokenType.Text, tokens[14].TokenType);
+
+            Assert.AreEqual(TokenType.QuotedString, tokens[15].TokenType);
+            Assert.AreEqual(true, ((QuotedString)tokens[15]).Content.Contains("hello"));
+
+            Assert.AreEqual(TokenType.Text, tokens[16].TokenType);
+
+            Assert.AreEqual(TokenType.QuotedString, tokens[17].TokenType);
+            Assert.AreEqual(true, ((QuotedString)tokens[17]).Content.Contains("world"));
+
+            Assert.AreEqual(TokenType.Text, tokens[18].TokenType);
+
+            Assert.AreEqual(TokenType.CSBlockEnd, tokens[19].TokenType);
+        }
     }
 }
