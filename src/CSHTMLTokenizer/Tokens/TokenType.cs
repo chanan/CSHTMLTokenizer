@@ -1,5 +1,4 @@
-﻿using System;
-namespace CSHTMLTokenizer.Tokens
+﻿namespace CSHTMLTokenizer.Tokens
 {
     public enum TokenType
     {

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
@@ -9,7 +8,7 @@ namespace CSHTMLTokenizer.Tokens
         public string Content => _content.ToString();
         public TokenType TokenType => TokenType.Text;
         public bool IsEmpty => _content.Length == 0;
-        private StringBuilder _content = new StringBuilder();
+        private readonly StringBuilder _content = new StringBuilder();
         public Guid Id { get; } = Guid.NewGuid();
 
         public void Append(char ch)

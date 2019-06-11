@@ -1,6 +1,5 @@
 ﻿using CSHTMLTokenizer.Tokens;
 using Stateless;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,20 +8,25 @@ namespace CSHTMLTokenizer
 {
     public class Tokenizer
     {
-        private enum State { Start, Data, TagOpen, EOF, TagName, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
+        private enum State
+        {
+            Start, Data, TagOpen, EOF, TagName, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
             AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS
         }
 
-        private enum Trigger { GotChar, EOF, OpenTag, TagName, Data, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
+        private enum Trigger
+        {
+            GotChar, EOF, OpenTag, TagName, Data, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
             AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS
         }
 
         private readonly StateMachine<State, Trigger> _machine = new StateMachine<State, Trigger>(State.Start);
         private readonly StateMachine<State, Trigger>.TriggerWithParameters<char> _gotCharTrigger;
 
-        private StringBuilder _buffer = new StringBuilder();
+        private readonly StringBuilder _buffer = new StringBuilder();
         private int _parens = 0;
         private int _braces = 0;
+        private bool _inFunctions = false;
 
         public List<IToken> Tokens { get; set; } = new List<IToken>();
 
@@ -131,7 +135,7 @@ namespace CSHTMLTokenizer
 
         public static List<IToken> Parse(string str)
         {
-            var tokenizer = new Tokenizer();
+            Tokenizer tokenizer = new Tokenizer();
             return tokenizer.ParseHtml(str);
         }
 
@@ -139,48 +143,37 @@ namespace CSHTMLTokenizer
         {
             Tokens = new List<IToken>();
             _machine.Fire(Trigger.Data);
-            foreach (var ch in str) _machine.Fire(_gotCharTrigger, ch);
+            foreach (char ch in str)
+            {
+                _machine.Fire(_gotCharTrigger, ch);
+            }
+
             _machine.Fire(Trigger.EOF);
             Tokens = RemoveEmpty(Tokens);
             FixEmptyAttributes(Tokens);
             FixSelfClosingTags(Tokens);
-            //TokenizeCSHTML(Tokens);
             return Tokens;
         }
 
         private void FixEmptyAttributes(List<IToken> tokens)
         {
-            var startTokens = Tokens.Where(t => t.TokenType == TokenType.StartTag);
-            foreach(var startToken in startTokens)
+            IEnumerable<IToken> startTokens = Tokens.Where(t => t.TokenType == TokenType.StartTag);
+            foreach (IToken startToken in startTokens)
             {
-                var startTag = (StartTag)startToken;
+                StartTag startTag = (StartTag)startToken;
                 startTag.Attributes = RemoveEmpty(startTag.Attributes);
-            }
-        }
-
-        private void TokenizeCSHTML(List<IToken> tokens)
-        {
-            var textTokens = Tokens.Where(t => t.TokenType == TokenType.Text);
-            var dict = new Dictionary<IToken, List<IToken>>();
-            foreach(var token in textTokens)
-            {
-                var text = (Text)token;
-                var csTokens = CSTokenizer.Tokenize(text.Content);
-                dict.Add(text, csTokens);
-            }
-            foreach(var kvp in dict)
-            {
-                Tokens = ReplaceTokenWithListOfTokens(Tokens, kvp.Key, kvp.Value);
             }
         }
 
         private List<IToken> ReplaceTokenWithListOfTokens(List<IToken> tokens, IToken key, List<IToken> value)
         {
-            var ret = new List<IToken>();
-            foreach(var token in Tokens)
+            List<IToken> ret = new List<IToken>();
+            foreach (IToken token in Tokens)
             {
                 if (token.Id != key.Id)
+                {
                     ret.Add(token);
+                }
                 else
                 {
                     ret.AddRange(value);
@@ -194,13 +187,16 @@ namespace CSHTMLTokenizer
         //so <br /> becomes <br> in the browser DOM 
         private void FixSelfClosingTags(List<IToken> tokens)
         {
-            var tags = tokens.Where(t => t.TokenType == TokenType.StartTag || t.TokenType == TokenType.EndTag).ToList();
-            for(int i = 0; i < tags.Count; i++)
+            List<IToken> tags = tokens.Where(t => t.TokenType == TokenType.StartTag || t.TokenType == TokenType.EndTag).ToList();
+            for (int i = 0; i < tags.Count; i++)
             {
-                var tag = tags[i];
-                if(tag.TokenType == TokenType.StartTag)
+                IToken tag = tags[i];
+                if (tag.TokenType == TokenType.StartTag)
                 {
-                    if (i == tags.Count - 1 || tags[i + 1].TokenType == TokenType.StartTag) ((StartTag)tag).IsSelfClosingTag = true;
+                    if ((i == tags.Count - 1 || tags[i + 1].TokenType == TokenType.StartTag) && !((StartTag)tag).IsGeneric)
+                    {
+                        ((StartTag)tag).IsSelfClosingTag = true;
+                    }
                 }
             }
         }
@@ -224,7 +220,7 @@ namespace CSHTMLTokenizer
             }
             else if (IsQuotationMark(ch))
             {
-                var quotedString = new QuotedString
+                QuotedString quotedString = new QuotedString
                 {
                     QuoteMark = QuoteMarkType.DoubleQuote
                 };
@@ -234,7 +230,7 @@ namespace CSHTMLTokenizer
             }
             else if (IsApostrophe(ch))
             {
-                var quotedString = new QuotedString
+                QuotedString quotedString = new QuotedString
                 {
                     QuoteMark = QuoteMarkType.SingleQuote
                 };
@@ -256,25 +252,33 @@ namespace CSHTMLTokenizer
             }
             else if (IsCloseCurlyBraces(ch))
             {
-                if(_braces != 0) _braces--;
+                if (_braces != 0)
+                {
+                    _braces--;
+                }
+
                 if (_braces == 0)
                 {
                     Tokens.Add(new CSBlockEnd());
+                    _inFunctions = false;
                     _machine.Fire(Trigger.Data);
                     return;
                 }
                 GetCurrentToken().Append(ch);
                 return;
             }
-            else GetCurrentToken().Append(ch);
+            else
+            {
+                GetCurrentToken().Append(ch);
+            }
         }
 
         private void OnGotCharBeforeCS(char ch)
         {
             _buffer.Append(ch);
-            if(IsAtSign(ch))
+            if (IsAtSign(ch))
             {
-                if(_buffer.ToString() == "@")
+                if (_buffer.ToString() == "@")
                 {
                     _machine.Fire(Trigger.Data);
                     _machine.Fire(_gotCharTrigger, ch);
@@ -284,42 +288,43 @@ namespace CSHTMLTokenizer
             {
                 if (_buffer.ToString().StartsWith("functions"))
                 {
-                    var token = new CSBlockStart
+                    CSBlockStart token = new CSBlockStart
                     {
                         IsFunctions = true,
                         IsOpenBrace = true
                     };
                     Tokens.Add(token);
                     _braces++;
+                    _inFunctions = true;
                     _machine.Fire(Trigger.Data);
                     return;
                 }
                 else
                 {
-                    var token = new CSBlockStart
+                    CSBlockStart token = new CSBlockStart
                     {
                         IsFunctions = false,
                         IsOpenBrace = _buffer.ToString().StartsWith("@ {")
                     };
                     Tokens.Add(token);
                     _machine.Fire(Trigger.Data);
-                    foreach (var tempCh in _buffer.ToString())
+                    foreach (char tempCh in _buffer.ToString())
                     {
                         _machine.Fire(_gotCharTrigger, tempCh);
                     }
                     return;
                 }
             }
-            if(IsLessThanSign(ch))
+            if (IsLessThanSign(ch))
             {
-                var token = new CSBlockStart
+                CSBlockStart token = new CSBlockStart
                 {
                     IsFunctions = false,
                     IsOpenBrace = false
                 };
                 Tokens.Add(token);
                 _machine.Fire(Trigger.Data);
-                foreach (var tempCh in _buffer.ToString())
+                foreach (char tempCh in _buffer.ToString())
                 {
                     _machine.Fire(_gotCharTrigger, tempCh);
                 }
@@ -328,7 +333,7 @@ namespace CSHTMLTokenizer
             }
             if (_buffer.ToString().Trim() == "implements")
             {
-                var token = new CSLine
+                CSLine token = new CSLine
                 {
                     LineType = CSLineType.Implements
                 };
@@ -338,7 +343,7 @@ namespace CSHTMLTokenizer
             }
             if (_buffer.ToString().Trim() == "inherits")
             {
-                var token = new CSLine
+                CSLine token = new CSLine
                 {
                     LineType = CSLineType.Inherit
                 };
@@ -348,7 +353,7 @@ namespace CSHTMLTokenizer
             }
             if (_buffer.ToString().Trim() == "inject")
             {
-                var token = new CSLine
+                CSLine token = new CSLine
                 {
                     LineType = CSLineType.Inject
                 };
@@ -358,7 +363,7 @@ namespace CSHTMLTokenizer
             }
             if (_buffer.ToString().Trim() == "layout")
             {
-                var token = new CSLine
+                CSLine token = new CSLine
                 {
                     LineType = CSLineType.Layout
                 };
@@ -368,7 +373,7 @@ namespace CSHTMLTokenizer
             }
             if (_buffer.ToString().Trim() == "page")
             {
-                var token = new CSLine
+                CSLine token = new CSLine
                 {
                     LineType = CSLineType.Page
                 };
@@ -378,7 +383,7 @@ namespace CSHTMLTokenizer
             }
             if (_buffer.ToString().Trim() == "using")
             {
-                var token = new CSLine
+                CSLine token = new CSLine
                 {
                     LineType = CSLineType.Using
                 };
@@ -388,7 +393,7 @@ namespace CSHTMLTokenizer
             }
             if (_buffer.ToString().Trim() == "addTagHelper")
             {
-                var token = new CSLine
+                CSLine token = new CSLine
                 {
                     LineType = CSLineType.AddTagHelper
                 };
@@ -398,7 +403,7 @@ namespace CSHTMLTokenizer
             }
             if (_buffer.ToString().Trim() == "typeparam")
             {
-                var token = new CSLine
+                CSLine token = new CSLine
                 {
                     LineType = CSLineType.Typeparam
                 };
@@ -410,7 +415,7 @@ namespace CSHTMLTokenizer
 
         private void OnGotCharQuote(char ch)
         {
-            var quotedString = (QuotedString)GetCurrentToken();
+            QuotedString quotedString = (QuotedString)GetCurrentToken();
             if (IsQuotationMark(ch) && quotedString.QuoteMark == QuoteMarkType.DoubleQuote)
             {
                 _machine.Fire(Trigger.Data);
@@ -421,7 +426,10 @@ namespace CSHTMLTokenizer
                 _machine.Fire(Trigger.Data);
                 return;
             }
-            else quotedString.Append(ch);
+            else
+            {
+                quotedString.Append(ch);
+            }
         }
 
         private void OnGotCharCsLine(char ch)
@@ -447,7 +455,10 @@ namespace CSHTMLTokenizer
 
         private void OnGotCharTagOpen(char ch)
         {
-            if (IsSolidus(ch)) _machine.Fire(Trigger.EndTagOpen);
+            if (IsSolidus(ch))
+            {
+                _machine.Fire(Trigger.EndTagOpen);
+            }
             else
             {
                 _machine.Fire(Trigger.TagName);
@@ -457,16 +468,28 @@ namespace CSHTMLTokenizer
 
         private void OnGotCharTagName(char ch)
         {
-            if (IsGreaterThanSign(ch)) _machine.Fire(Trigger.Data);
-            else if (IsWhiteSpace(ch)) _machine.Fire(Trigger.BeforeAttributeName);
-            else GetCurrentToken().Append(ch);
+            if (IsGreaterThanSign(ch))
+            {
+                if (_inFunctions)
+                {
+                    ((StartTag)GetCurrentToken()).IsGeneric = true;
+                }
+                _machine.Fire(Trigger.Data);
+            }
+            else if (IsWhiteSpace(ch))
+            {
+                _machine.Fire(Trigger.BeforeAttributeName);
+            }
+            else
+            {
+                GetCurrentToken().Append(ch);
+            }
         }
 
         private void OnSelfClosingStartTag(char ch)
         {
             if (IsGreaterThanSign(ch))
             {
-                ((StartTag)GetCurrentToken()).IsSelfClosingTag = true;
                 _machine.Fire(Trigger.Data);
             }
         }
@@ -489,11 +512,11 @@ namespace CSHTMLTokenizer
 
         private void OnGotCharBeforeAttributeName(char ch)
         {
-            if(IsWhiteSpace(ch))
+            if (IsWhiteSpace(ch))
             {
                 return;
             }
-            if(IsSolidus(ch) || IsGreaterThanSign(ch))
+            if (IsSolidus(ch) || IsGreaterThanSign(ch))
             {
                 _machine.Fire(Trigger.AfterAttributeName);
                 _machine.Fire(_gotCharTrigger, ch);
@@ -510,20 +533,35 @@ namespace CSHTMLTokenizer
                 _machine.Fire(Trigger.AfterAttributeName);
                 _machine.Fire(_gotCharTrigger, ch);
             }
-            else if (IsEqualsSign(ch)) _machine.Fire(Trigger.BeforeAttributeValue);
+            else if (IsEqualsSign(ch))
+            {
+                _machine.Fire(Trigger.BeforeAttributeValue);
+            }
             else
             {
-                var tag = ((StartTag)GetCurrentToken());
+                StartTag tag = ((StartTag)GetCurrentToken());
                 tag.Attributes[tag.Attributes.Count - 1].Append(ch);
             }
         }
 
         private void OnGotCharAfterAttributeName(char ch)
         {
-            if (IsSolidus(ch)) _machine.Fire(Trigger.SelfClosingStartTag);
-            else if (IsEqualsSign(ch)) _machine.Fire(Trigger.BeforeAttributeValue);
-            else if (IsGreaterThanSign(ch)) _machine.Fire(Trigger.Data);
-            else if (IsWhiteSpace(ch)) return;
+            if (IsSolidus(ch))
+            {
+                _machine.Fire(Trigger.SelfClosingStartTag);
+            }
+            else if (IsEqualsSign(ch))
+            {
+                _machine.Fire(Trigger.BeforeAttributeValue);
+            }
+            else if (IsGreaterThanSign(ch))
+            {
+                _machine.Fire(Trigger.Data);
+            }
+            else if (IsWhiteSpace(ch))
+            {
+                return;
+            }
             else
             {
                 _machine.Fire(Trigger.BeforeAttributeName);
@@ -533,14 +571,14 @@ namespace CSHTMLTokenizer
 
         private void OnBeforeAttributeValue()
         {
-            var tag = ((StartTag)GetCurrentToken());
+            StartTag tag = ((StartTag)GetCurrentToken());
             ((AttributeToken)tag.Attributes[tag.Attributes.Count - 1]).NameOnly = false;
         }
 
         private void OnGotCharBeforeAttributeValue(char ch)
         {
-            var tag = ((StartTag)GetCurrentToken());
-            var attribute = (AttributeToken)tag.Attributes[tag.Attributes.Count - 1];
+            StartTag tag = ((StartTag)GetCurrentToken());
+            AttributeToken attribute = (AttributeToken)tag.Attributes[tag.Attributes.Count - 1];
             if (IsWhiteSpace(ch))
             {
                 return;
@@ -564,8 +602,8 @@ namespace CSHTMLTokenizer
 
         private void OnGotCharAttributeValue(char ch)
         {
-            var tag = ((StartTag)GetCurrentToken());
-            var attribute = (AttributeToken)tag.Attributes[tag.Attributes.Count - 1];
+            StartTag tag = ((StartTag)GetCurrentToken());
+            AttributeToken attribute = (AttributeToken)tag.Attributes[tag.Attributes.Count - 1];
             if (IsQuotationMark(ch) && (attribute.Value.QuoteMark == QuoteMarkType.DoubleQuote))
             {
                 _machine.Fire(Trigger.AfterAttributeValue);
@@ -612,9 +650,18 @@ namespace CSHTMLTokenizer
 
         private void OnGotCharAfterAttributeValue(char ch)
         {
-            if (IsWhiteSpace(ch)) _machine.Fire(Trigger.BeforeAttributeName);
-            else if (IsSolidus(ch)) _machine.Fire(Trigger.SelfClosingStartTag);
-            else if (IsGreaterThanSign(ch)) _machine.Fire(Trigger.Data);
+            if (IsWhiteSpace(ch))
+            {
+                _machine.Fire(Trigger.BeforeAttributeName);
+            }
+            else if (IsSolidus(ch))
+            {
+                _machine.Fire(Trigger.SelfClosingStartTag);
+            }
+            else if (IsGreaterThanSign(ch))
+            {
+                _machine.Fire(Trigger.Data);
+            }
             else
             {
                 _machine.Fire(Trigger.BeforeAttributeName);
@@ -622,26 +669,85 @@ namespace CSHTMLTokenizer
             }
         }
 
-        private IToken GetCurrentToken() => Tokens[Tokens.Count - 1];
-        private bool IsLessThanSign(char ch) => ch == '<';
-        private bool IsGreaterThanSign(char ch) => ch == '>';
-        private bool IsSolidus(char ch) => ch == '/';
-        private bool IsWhiteSpace(char ch) => Char.IsWhiteSpace(ch);
-        private bool IsEqualsSign(char ch) => ch == '=';
-        private bool IsQuotationMark(char ch) => ch == '"';
-        private bool IsApostrophe(char ch) => ch == '\'';
-        private bool IsAtSign(char ch) => ch == '@';
-        private bool IsOpenParenthesis(char ch) => ch == '(';
-        private bool IsCloseParenthesis(char ch) => ch == ')';
-        private bool IsOpenCurlyBraces(char ch) => ch == '{';
-        private bool IsCloseCurlyBraces(char ch) => ch == '}';
-        private bool IsCr(char ch) => ch == '\r';
-        private bool IsLf(char ch) => ch == '\f';
+        private IToken GetCurrentToken()
+        {
+            return Tokens[Tokens.Count - 1];
+        }
+
+        private bool IsLessThanSign(char ch)
+        {
+            return ch == '<';
+        }
+
+        private bool IsGreaterThanSign(char ch)
+        {
+            return ch == '>';
+        }
+
+        private bool IsSolidus(char ch)
+        {
+            return ch == '/';
+        }
+
+        private bool IsWhiteSpace(char ch)
+        {
+            return char.IsWhiteSpace(ch);
+        }
+
+        private bool IsEqualsSign(char ch)
+        {
+            return ch == '=';
+        }
+
+        private bool IsQuotationMark(char ch)
+        {
+            return ch == '"';
+        }
+
+        private bool IsApostrophe(char ch)
+        {
+            return ch == '\'';
+        }
+
+        private bool IsAtSign(char ch)
+        {
+            return ch == '@';
+        }
+
+        private bool IsOpenParenthesis(char ch)
+        {
+            return ch == '(';
+        }
+
+        private bool IsCloseParenthesis(char ch)
+        {
+            return ch == ')';
+        }
+
+        private bool IsOpenCurlyBraces(char ch)
+        {
+            return ch == '{';
+        }
+
+        private bool IsCloseCurlyBraces(char ch)
+        {
+            return ch == '}';
+        }
+
+        private bool IsCr(char ch)
+        {
+            return ch == '\r';
+        }
+
+        private bool IsLf(char ch)
+        {
+            return ch == '\f';
+        }
 
         public override string ToString()
         {
-            var sb = new StringBuilder();
-            foreach (var token in Tokens)
+            StringBuilder sb = new StringBuilder();
+            foreach (IToken token in Tokens)
             {
                 sb.Append(token.ToHtml());
             }

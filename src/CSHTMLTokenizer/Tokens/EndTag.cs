@@ -16,7 +16,7 @@ namespace CSHTMLTokenizer.Tokens
             return "</" + Name + ">";
         }
 
-        public void Append(Char ch)
+        public void Append(char ch)
         {
             _name.Append(ch);
         }

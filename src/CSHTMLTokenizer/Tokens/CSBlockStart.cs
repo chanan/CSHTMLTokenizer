@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
@@ -19,10 +18,18 @@ namespace CSHTMLTokenizer.Tokens
 
         public string ToHtml()
         {
-            var sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             sb.Append('@');
-            if (IsFunctions) sb.Append("functions");
-            if(IsOpenBrace) sb.Append(" {");
+            if (IsFunctions)
+            {
+                sb.Append("functions");
+            }
+
+            if (IsOpenBrace)
+            {
+                sb.Append(" {");
+            }
+
             return sb.ToString();
         }
     }

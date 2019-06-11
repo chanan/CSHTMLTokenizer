@@ -8,27 +8,35 @@ namespace CSHTMLTokenizer.Tokens
     {
         public string Name => _name.ToString();
         public bool IsSelfClosingTag { get; set; } = false;
+        public bool IsGeneric { get; set; } = false;
         public TokenType TokenType => TokenType.StartTag;
         public List<IToken> Attributes { get; set; } = new List<IToken>();
         public bool IsEmpty => _name.Length == 0;
         public Guid Id { get; } = Guid.NewGuid();
 
-        private StringBuilder _name = new StringBuilder();
+        private readonly StringBuilder _name = new StringBuilder();
 
         public string ToHtml()
         {
-            var sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             sb.Append('<').Append(Name);
-            if(Attributes.Count > 0)
+            if (Attributes.Count > 0)
             {
-                foreach (var token in Attributes) sb.Append(token.ToHtml());
+                foreach (IToken token in Attributes)
+                {
+                    sb.Append(token.ToHtml());
+                }
             }
-            if (IsSelfClosingTag) sb.Append(" /");
+            if (IsSelfClosingTag && !IsGeneric)
+            {
+                sb.Append(" /");
+            }
+
             sb.Append('>');
             return sb.ToString();
         }
 
-        public void Append(Char ch)
+        public void Append(char ch)
         {
             _name.Append(ch);
         }

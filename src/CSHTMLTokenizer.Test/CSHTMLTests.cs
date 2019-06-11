@@ -9,18 +9,18 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestTagHelper()
         {
-            var str = @"@page '/'
+            string str = @"@page '/'
 @addTagHelper *,BlazorPrettyCode
 <PrettyCode CodeFile='snippets/demo.html' />";
 
-            var tokens = Tokenizer.Parse(str);
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse(str);
             Assert.AreEqual(5, tokens.Count);
 
-            var csLine1 = (CSLine)tokens[0];
+            CSLine csLine1 = (CSLine)tokens[0];
             Assert.AreEqual(" '/'", csLine1.Line);
             Assert.AreEqual(CSLineType.Page, csLine1.LineType);
 
-            var csLine2 = (CSLine)tokens[2];
+            CSLine csLine2 = (CSLine)tokens[2];
             Assert.AreEqual(" *,BlazorPrettyCode", csLine2.Line);
             Assert.AreEqual(CSLineType.AddTagHelper, csLine2.LineType);
 
@@ -30,11 +30,11 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestForEach()
         {
-            var str = @"@foreach(var item in Items) {
+            string str = @"@foreach(var item in Items) {
     <RenderItem Item='@item' />
 }";
 
-            var tokens = Tokenizer.Parse(str);
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse(str);
             Assert.AreEqual(5, tokens.Count);
 
             Assert.AreEqual(TokenType.CSBlockStart, tokens[0].TokenType);
@@ -42,7 +42,7 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual("foreach(var item in Items) {", ((Text)tokens[1]).Content.Trim());
 
             Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
-            var startTag = (StartTag)tokens[2];
+            StartTag startTag = (StartTag)tokens[2];
             Assert.AreEqual(startTag.IsSelfClosingTag, true);
             Assert.AreEqual(startTag.Name, "RenderItem");
             Assert.AreEqual(startTag.Attributes.Count, 1);
@@ -56,7 +56,7 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void ForEachAndFunctions()
         {
-            var str = @"@page '/'
+            string str = @"@page '/'
 
 @foreach(var item in list) {
     <h1>@item</h1>
@@ -66,7 +66,7 @@ namespace CSHTMLTokenizer.Test
     var list = new List<string> { 'hello', 'world' };
 }";
 
-            var tokens = Tokenizer.Parse(str);
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse(str);
             Assert.AreEqual(20, tokens.Count);
 
             Assert.AreEqual(TokenType.CSLine, tokens[0].TokenType);
@@ -81,9 +81,10 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(true, ((Text)tokens[3]).Content.StartsWith("foreach(var item in list)"));
 
             Assert.AreEqual(TokenType.StartTag, tokens[4].TokenType);
-            var startTag = (StartTag)tokens[4];
-            Assert.AreEqual(startTag.IsSelfClosingTag, false);
-            Assert.AreEqual(startTag.Name, "h1");
+            StartTag startTag = (StartTag)tokens[4];
+            Assert.AreEqual(false, startTag.IsSelfClosingTag);
+            Assert.AreEqual("h1", startTag.Name);
+            Assert.AreEqual(false, startTag.IsGeneric);
 
             Assert.AreEqual(TokenType.CSBlockStart, tokens[5].TokenType);
 
@@ -105,6 +106,8 @@ namespace CSHTMLTokenizer.Test
 
             Assert.AreEqual(TokenType.StartTag, tokens[13].TokenType);
             Assert.AreEqual("string", ((StartTag)tokens[13]).Name);
+            Assert.AreEqual(false, ((StartTag)tokens[13]).IsSelfClosingTag);
+            Assert.AreEqual(true, ((StartTag)tokens[13]).IsGeneric);
 
             Assert.AreEqual(TokenType.Text, tokens[14].TokenType);
 

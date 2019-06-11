@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
 {
     public class QuotedString : IToken
     {
-        private StringBuilder _content = new StringBuilder();
+        private readonly StringBuilder _content = new StringBuilder();
         public string Content => _content.ToString();
         public TokenType TokenType => TokenType.QuotedString;
         public bool IsEmpty => _content.Length == 0;
@@ -22,13 +21,25 @@ namespace CSHTMLTokenizer.Tokens
 
         public string ToHtml()
         {
-            var quote = GetQuoteChar();
-            var sb = new StringBuilder();
+            string quote = GetQuoteChar();
+            StringBuilder sb = new StringBuilder();
             sb.Append(quote);
-            if(IsCSStatement) sb.Append('@');
-            if (HasParentheses) sb.Append('(');
+            if (IsCSStatement)
+            {
+                sb.Append('@');
+            }
+
+            if (HasParentheses)
+            {
+                sb.Append('(');
+            }
+
             sb.Append(_content);
-            if (HasParentheses) sb.Append(')');
+            if (HasParentheses)
+            {
+                sb.Append(')');
+            }
+
             sb.Append(quote);
             return sb.ToString();
         }

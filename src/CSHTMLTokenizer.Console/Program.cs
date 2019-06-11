@@ -4,11 +4,11 @@ using System.Text;
 
 namespace CSHTMLTokenizer.Console
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            var str = @"@page '/'
+            string str = @"@page '/'
 
 @foreach(var item in list) {
     <h1>@item</h1>
@@ -17,14 +17,14 @@ namespace CSHTMLTokenizer.Console
 @functions {
     var list = new List<String> { 'hello', 'world' };
 }";
-            var tokens = Tokenizer.Parse(str);
+            List<IToken> tokens = Tokenizer.Parse(str);
             System.Console.WriteLine(Print(tokens));
         }
 
         public static string Print(List<IToken> tokens)
         {
-            var sb = new StringBuilder();
-            foreach (var token in tokens)
+            StringBuilder sb = new StringBuilder();
+            foreach (IToken token in tokens)
             {
                 sb.Append(token.ToHtml());
             }

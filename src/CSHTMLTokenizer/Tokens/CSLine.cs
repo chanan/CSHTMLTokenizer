@@ -5,8 +5,8 @@ namespace CSHTMLTokenizer.Tokens
 {
     public class CSLine : IToken
     {
-        private StringBuilder _line = new StringBuilder();
-        public String Line => _line.ToString();
+        private readonly StringBuilder _line = new StringBuilder();
+        public string Line => _line.ToString();
         public TokenType TokenType => TokenType.CSLine;
         public CSLineType LineType { get; set; }
         public bool IsEmpty => _line.Length == 0;
@@ -24,7 +24,7 @@ namespace CSHTMLTokenizer.Tokens
 
         private string GetLineType(CSLineType lineType)
         {
-            switch(lineType)
+            switch (lineType)
             {
                 case CSLineType.AddTagHelper:
                     return "addTagHelper";

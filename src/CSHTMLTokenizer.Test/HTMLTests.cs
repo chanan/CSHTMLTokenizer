@@ -9,7 +9,7 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestText()
         {
-            var tokens = Tokenizer.Parse("This is a test");
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is a test");
             Assert.AreEqual(1, tokens.Count);
             Assert.AreEqual(TokenType.Text, tokens[0].TokenType);
             Assert.AreEqual("This is a test", ((Text)tokens[0]).Content);
@@ -18,7 +18,7 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestSelfClosingTag()
         {
-            var tokens = Tokenizer.Parse("This is a test<br />This is another line");
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is a test<br />This is another line");
             Assert.AreEqual(3, tokens.Count);
 
             Assert.AreEqual(TokenType.Text, tokens[0].TokenType);
@@ -35,7 +35,7 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestFixSelfClosingTag()
         {
-            var tokens = Tokenizer.Parse("This is a test<br>This is another line");
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is a test<br>This is another line");
             Assert.AreEqual(3, tokens.Count);
 
             Assert.AreEqual(TokenType.Text, tokens[0].TokenType);
@@ -52,7 +52,7 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestContainerTag()
         {
-            var tokens = Tokenizer.Parse("This is <b>bold</b>");
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is <b>bold</b>");
             Assert.AreEqual(4, tokens.Count);
 
             Assert.AreEqual(TokenType.Text, tokens[0].TokenType);
@@ -72,7 +72,7 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestAttributes()
         {
-            var tokens = Tokenizer.Parse("This is <div class='boldClass'>bold</div>");
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is <div class='boldClass'>bold</div>");
             Assert.AreEqual(4, tokens.Count);
 
             Assert.AreEqual(TokenType.Text, tokens[0].TokenType);
@@ -88,7 +88,7 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual("class", ((AttributeToken)((StartTag)tokens[1]).Attributes[0]).Name);
             Assert.AreEqual("boldClass", ((AttributeToken)((StartTag)tokens[1]).Attributes[0]).Value.Content);
             Assert.AreEqual(QuoteMarkType.SingleQuote, ((AttributeToken)((StartTag)tokens[1]).Attributes[0]).Value.QuoteMark);
-        
+
             Assert.AreEqual(TokenType.Text, tokens[2].TokenType);
             Assert.AreEqual("bold", ((Text)tokens[2]).Content);
 
@@ -99,7 +99,7 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestQuotedString()
         {
-            var tokens = Tokenizer.Parse("This is a 'quoted string'");
+            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is a 'quoted string'");
             Assert.AreEqual(2, tokens.Count);
 
             Assert.AreEqual(TokenType.Text, tokens[0].TokenType);
