@@ -2,7 +2,7 @@
 
 namespace CSHTMLTokenizer.Tokens
 {
-    internal class StartOfLine : IToken
+    public class StartOfLine : IToken
     {
         public TokenType TokenType => TokenType.StartOfLine;
 

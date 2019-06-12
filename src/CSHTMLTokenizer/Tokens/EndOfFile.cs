@@ -2,7 +2,7 @@
 
 namespace CSHTMLTokenizer.Tokens
 {
-    internal class EndOfFile : IToken
+    public class EndOfFile : IToken
     {
         public TokenType TokenType => TokenType.EndOfFile;
 

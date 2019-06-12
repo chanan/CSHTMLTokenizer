@@ -2,7 +2,7 @@
 
 namespace CSHTMLTokenizer.Tokens
 {
-    internal class EndOfLine : IToken
+    public class EndOfLine : IToken
     {
         public TokenType TokenType => TokenType.EndOfLine;
 
