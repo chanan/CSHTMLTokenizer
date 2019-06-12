@@ -12,6 +12,7 @@ namespace CSHTMLTokenizer.Tokens
         public bool IsEmpty => _name.Length == 0;
         public Guid Id { get; } = Guid.NewGuid();
         public bool NameOnly { get; set; } = true;
+        public bool IsFirstInLine { get; set; } = false;
 
         public void Append(char ch)
         {
@@ -20,12 +21,13 @@ namespace CSHTMLTokenizer.Tokens
 
         public string ToHtml()
         {
+            string spacer = IsFirstInLine ? string.Empty : " ";
             if (NameOnly)
             {
-                return " " + Name;
+                return spacer + Name;
             }
 
-            return " " + Name + "=" + Value.ToHtml();
+            return spacer + Name + "=" + Value.ToHtml();
 
         }
     }

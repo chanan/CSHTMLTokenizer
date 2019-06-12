@@ -11,13 +11,15 @@ namespace CSHTMLTokenizer
         private enum State
         {
             Start, Data, TagOpen, EOF, TagName, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
-            AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS
+            AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS,
+            EndOfLine, BeforeAttributeNameEndOfLine, BeforeAttributeNameWhiteSpace
         }
 
         private enum Trigger
         {
             GotChar, EOF, OpenTag, TagName, Data, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
-            AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS
+            AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS,
+            EndOfLine, BeforeAttributeNameWhiteSpace
         }
 
         private readonly StateMachine<State, Trigger> _machine = new StateMachine<State, Trigger>(State.Start);
@@ -45,6 +47,7 @@ namespace CSHTMLTokenizer
                 .Permit(Trigger.Quote, State.Quote)
                 .Permit(Trigger.BeforeCS, State.BeforeCS)
                 .Permit(Trigger.OpenTag, State.TagOpen)
+                .Permit(Trigger.EndOfLine, State.EndOfLine)
                 .Permit(Trigger.EOF, State.EOF);
 
             _machine.Configure(State.TagOpen)
@@ -78,7 +81,19 @@ namespace CSHTMLTokenizer
                 .OnEntryFrom(_gotCharTrigger, OnGotCharBeforeAttributeName)
                 .PermitReentry(Trigger.GotChar)
                 .Permit(Trigger.AttributeName, State.AttributeName)
-                .Permit(Trigger.AfterAttributeName, State.AfterAttributeName);
+                .Permit(Trigger.AfterAttributeName, State.AfterAttributeName)
+                .Permit(Trigger.EndOfLine, State.BeforeAttributeNameEndOfLine)
+                .Permit(Trigger.BeforeAttributeNameWhiteSpace, State.BeforeAttributeNameWhiteSpace);
+
+            _machine.Configure(State.BeforeAttributeNameWhiteSpace)
+                .OnEntryFrom(Trigger.BeforeAttributeNameWhiteSpace, OnBeforeAttributeNameWhiteSpace)
+                .OnEntryFrom(_gotCharTrigger, OnGotCharBeforeAttributeNameWhiteSpace)
+                .PermitReentry(Trigger.GotChar)
+                .Permit(Trigger.BeforeAttributeName, State.BeforeAttributeName);
+
+            _machine.Configure(State.BeforeAttributeNameEndOfLine)
+                .OnEntryFrom(Trigger.EndOfLine, OnBeforeAttributeNameEndOfLine)
+                .Permit(Trigger.BeforeAttributeName, State.BeforeAttributeName);
 
             _machine.Configure(State.AttributeName)
                 .OnEntryFrom(_gotCharTrigger, OnGotCharAttributeName)
@@ -129,8 +144,35 @@ namespace CSHTMLTokenizer
               .OnEntryFrom(_gotCharTrigger, OnGotCharCsLine)
               .PermitReentry(Trigger.GotChar)
               .Permit(Trigger.Data, State.Data)
+              .Permit(Trigger.EndOfLine, State.EndOfLine)
               .Permit(Trigger.EOF, State.EOF);
 
+            _machine.Configure(State.EndOfLine)
+                .OnEntry(OnEndOfLine)
+                .Permit(Trigger.Data, State.Data);
+
+            _machine.Configure(State.EOF)
+                .OnEntry(OnEof);
+
+        }
+
+        private void OnGotCharBeforeAttributeNameWhiteSpace(char ch)
+        {
+            if (IsWhiteSpace(ch))
+            {
+                StartTag tag = ((StartTag)GetCurrentToken());
+                tag.Attributes[tag.Attributes.Count - 1].Append(ch);
+            }
+            else
+            {
+                _machine.Fire(Trigger.BeforeAttributeName);
+                _machine.Fire(_gotCharTrigger, ch);
+            }
+        }
+
+        private void OnBeforeAttributeNameWhiteSpace()
+        {
+            ((StartTag)GetCurrentToken()).Attributes.Add(new Text());
         }
 
         public static List<IToken> Parse(string str)
@@ -141,7 +183,7 @@ namespace CSHTMLTokenizer
 
         protected List<IToken> ParseHtml(string str)
         {
-            Tokens = new List<IToken>();
+            Tokens = new List<IToken>() { new StartOfLine() };
             _machine.Fire(Trigger.Data);
             foreach (char ch in str)
             {
@@ -155,6 +197,25 @@ namespace CSHTMLTokenizer
             return Tokens;
         }
 
+        private void OnBeforeAttributeNameEndOfLine()
+        {
+            ((StartTag)GetCurrentToken()).Attributes.Add(new EndOfLine());
+            ((StartTag)GetCurrentToken()).Attributes.Add(new StartOfLine());
+            _machine.Fire(Trigger.BeforeAttributeName);
+        }
+
+        private void OnEndOfLine()
+        {
+            Tokens.Add(new EndOfLine());
+            Tokens.Add(new StartOfLine());
+            _machine.Fire(Trigger.Data);
+        }
+
+        private void OnEof()
+        {
+            Tokens.Add(new EndOfFile());
+        }
+
         private void FixEmptyAttributes(List<IToken> tokens)
         {
             IEnumerable<IToken> startTokens = Tokens.Where(t => t.TokenType == TokenType.StartTag);
@@ -163,24 +224,6 @@ namespace CSHTMLTokenizer
                 StartTag startTag = (StartTag)startToken;
                 startTag.Attributes = RemoveEmpty(startTag.Attributes);
             }
-        }
-
-        private List<IToken> ReplaceTokenWithListOfTokens(List<IToken> tokens, IToken key, List<IToken> value)
-        {
-            List<IToken> ret = new List<IToken>();
-            foreach (IToken token in Tokens)
-            {
-                if (token.Id != key.Id)
-                {
-                    ret.Add(token);
-                }
-                else
-                {
-                    ret.AddRange(value);
-                }
-
-            }
-            return ret;
         }
 
         //This is needed because Chrome removes the / from self closing tags
@@ -266,6 +309,14 @@ namespace CSHTMLTokenizer
                 }
                 GetCurrentToken().Append(ch);
                 return;
+            }
+            else if (IsN(ch))
+            {
+                _machine.Fire(Trigger.EndOfLine);
+            }
+            else if (IsLf(ch) || IsCr(ch))
+            {
+                //Ignore
             }
             else
             {
@@ -438,9 +489,13 @@ namespace CSHTMLTokenizer
             {
                 _machine.Fire(Trigger.CSBlock);
             }
+            else if (IsN(ch))
+            {
+                _machine.Fire(Trigger.EndOfLine);
+            }
             else if (IsCr(ch) || IsLf(ch))
             {
-                _machine.Fire(Trigger.Data);
+                //ignore
             }
             else
             {
@@ -507,13 +562,31 @@ namespace CSHTMLTokenizer
 
         private void OnBeforeAttributeName()
         {
-            ((StartTag)GetCurrentToken()).Attributes.Add(new AttributeToken());
+            StartTag startTag = (StartTag)GetCurrentToken();
+            AttributeToken atrrib = new AttributeToken();
+
+            if (startTag.Attributes.Count > 0 && startTag.Attributes[startTag.Attributes.Count - 1].TokenType == TokenType.StartOfLine)
+            {
+                atrrib.IsFirstInLine = true;
+            }
+
+            startTag.Attributes.Add(atrrib);
         }
 
         private void OnGotCharBeforeAttributeName(char ch)
         {
+            if (IsN(ch))
+            {
+                _machine.Fire(Trigger.EndOfLine);
+                return;
+            }
+            if (IsCr(ch) || IsLf(ch))
+            {
+                return;
+            }
             if (IsWhiteSpace(ch))
             {
+                _machine.Fire(Trigger.BeforeAttributeNameWhiteSpace);
                 return;
             }
             if (IsSolidus(ch) || IsGreaterThanSign(ch))
@@ -742,6 +815,11 @@ namespace CSHTMLTokenizer
         private bool IsLf(char ch)
         {
             return ch == '\f';
+        }
+
+        private bool IsN(char ch)
+        {
+            return ch == '\n';
         }
 
         public override string ToString()

@@ -10,9 +10,9 @@ namespace CSHTMLTokenizer.Test
         public void TestVariable()
         {
             System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is an <b name='@testname' /> test");
-            Assert.AreEqual(3, tokens.Count);
-            Assert.AreEqual(TokenType.StartTag, tokens[1].TokenType);
-            StartTag startTag = (StartTag)tokens[1];
+            Assert.AreEqual(5, tokens.Count);
+            Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
+            StartTag startTag = (StartTag)tokens[2];
             Assert.AreEqual("b", startTag.Name);
             Assert.AreEqual(1, startTag.Attributes.Count);
             Assert.AreEqual(TokenType.Attribute, startTag.Attributes[0].TokenType);
@@ -27,9 +27,9 @@ namespace CSHTMLTokenizer.Test
         public void TestStatement()
         {
             System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is an <div onclick='@(() => onclick(\"hello\"))' /> test");
-            Assert.AreEqual(3, tokens.Count);
-            Assert.AreEqual(TokenType.StartTag, tokens[1].TokenType);
-            StartTag startTag = (StartTag)tokens[1];
+            Assert.AreEqual(5, tokens.Count);
+            Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
+            StartTag startTag = (StartTag)tokens[2];
             Assert.AreEqual("div", startTag.Name);
             Assert.AreEqual(1, startTag.Attributes.Count);
             Assert.AreEqual(TokenType.Attribute, startTag.Attributes[0].TokenType);

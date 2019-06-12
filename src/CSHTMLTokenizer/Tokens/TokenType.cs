@@ -9,10 +9,12 @@
         Character,
         Text,
         Attribute,
-        EOF,
+        EndOfFile,
         QuotedString,
         CSBlockStart,
         CSBlockEnd,
-        CSLine
+        CSLine,
+        StartOfLine,
+        EndOfLine
     }
 }

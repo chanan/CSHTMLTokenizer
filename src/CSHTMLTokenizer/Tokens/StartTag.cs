@@ -29,7 +29,9 @@ namespace CSHTMLTokenizer.Tokens
             }
             if (IsSelfClosingTag && !IsGeneric)
             {
-                sb.Append(" /");
+                string spacer = Attributes.Count > 0 && Attributes[Attributes.Count - 1].TokenType == TokenType.StartOfLine ?
+                    string.Empty : " ";
+                sb.Append(spacer).Append("/");
             }
 
             sb.Append('>');

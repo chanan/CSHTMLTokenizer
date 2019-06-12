@@ -19,6 +19,17 @@ namespace CSHTMLTokenizer.Console
 }";
             List<IToken> tokens = Tokenizer.Parse(str);
             System.Console.WriteLine(Print(tokens));
+
+            System.Console.WriteLine();
+            System.Console.WriteLine("------------------------------------------------------");
+            System.Console.WriteLine();
+
+            str = @"<div
+    class='test'
+/>";
+
+            tokens = Tokenizer.Parse(str);
+            System.Console.WriteLine(Print(tokens));
         }
 
         public static string Print(List<IToken> tokens)
