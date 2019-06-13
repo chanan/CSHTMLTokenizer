@@ -1,5 +1,6 @@
 ﻿using CSHTMLTokenizer.Tokens;
 using Stateless;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -30,7 +31,7 @@ namespace CSHTMLTokenizer
         private int _braces = 0;
         private bool _inFunctions = false;
 
-        public List<IToken> Tokens { get; set; } = new List<IToken>();
+        public List<Line> Lines { get; set; } = new List<Line>();
 
         public Tokenizer()
         {
@@ -151,9 +152,6 @@ namespace CSHTMLTokenizer
                 .OnEntry(OnEndOfLine)
                 .Permit(Trigger.Data, State.Data);
 
-            _machine.Configure(State.EOF)
-                .OnEntry(OnEof);
-
         }
 
         private void OnGotCharBeforeAttributeNameWhiteSpace(char ch)
@@ -175,15 +173,15 @@ namespace CSHTMLTokenizer
             ((StartTag)GetCurrentToken()).Attributes.Add(new Text());
         }
 
-        public static List<IToken> Parse(string str)
+        public static List<Line> Parse(string str)
         {
             Tokenizer tokenizer = new Tokenizer();
             return tokenizer.ParseHtml(str);
         }
 
-        protected List<IToken> ParseHtml(string str)
+        protected List<Line> ParseHtml(string str)
         {
-            Tokens = new List<IToken>() { new StartOfLine() };
+            Lines = new List<Line>() { new Line() };
             _machine.Fire(Trigger.Data);
             foreach (char ch in str)
             {
@@ -191,52 +189,92 @@ namespace CSHTMLTokenizer
             }
 
             _machine.Fire(Trigger.EOF);
-            Tokens = RemoveEmpty(Tokens);
-            FixEmptyAttributes(Tokens);
-            FixSelfClosingTags(Tokens);
-            return Tokens;
+            RemoveAllEmpty();
+            FixEmptyAttributes();
+            FixSelfClosingTags();
+            FixLastLine();
+            return Lines;
+        }
+
+        private void RemoveAllEmpty()
+        {
+            foreach(var line in Lines.Where(token => token.TokenType == TokenType.Line))
+            {
+                line.Tokens = RemoveEmpty(line.Tokens);
+            }
+        }
+
+        private void FixLastLine()
+        {
+            GetCurrentLine().LastLine = true;
         }
 
         private void OnBeforeAttributeNameEndOfLine()
         {
-            ((StartTag)GetCurrentToken()).Attributes.Add(new EndOfLine());
-            ((StartTag)GetCurrentToken()).Attributes.Add(new StartOfLine());
+            //TODO: Figure this mess out...
+
+            var currentStartTag = (StartTag)GetCurrentToken();
+            currentStartTag.LineType = currentStartTag.LineType == TagLineType.SingleLine ? TagLineType.MultiLineStart : TagLineType.MultiLine;
+            var newLine = new Line();
+            var newStartTag = new StartTag
+            {
+                LineType = currentStartTag.LineType == TagLineType.SingleLine ? TagLineType.MultiLineStart : TagLineType.MultiLine
+            };
+            foreach(var ch in currentStartTag.Name)
+            {
+                newStartTag.Append(ch);
+            }
+            newLine.Add(newStartTag);
+            Lines.Add(newLine);
             _machine.Fire(Trigger.BeforeAttributeName);
         }
 
         private void OnEndOfLine()
         {
-            Tokens.Add(new EndOfLine());
-            Tokens.Add(new StartOfLine());
+            Lines.Add(new Line());
             _machine.Fire(Trigger.Data);
         }
 
-        private void OnEof()
+        private void FixEmptyAttributes()
         {
-            Tokens.Add(new EndOfFile());
-        }
-
-        private void FixEmptyAttributes(List<IToken> tokens)
-        {
-            IEnumerable<IToken> startTokens = Tokens.Where(t => t.TokenType == TokenType.StartTag);
-            foreach (IToken startToken in startTokens)
+            foreach(Line line in Lines.Where(token => token.TokenType == TokenType.Line))
             {
-                StartTag startTag = (StartTag)startToken;
-                startTag.Attributes = RemoveEmpty(startTag.Attributes);
+                IEnumerable<IToken> startTokens = line.Tokens.Where(t => t.TokenType == TokenType.StartTag);
+                foreach (IToken startToken in startTokens)
+                {
+                    StartTag startTag = (StartTag)startToken;
+                    startTag.Attributes = RemoveEmpty(startTag.Attributes);
+                }
             }
         }
 
         //This is needed because Chrome removes the / from self closing tags
         //so <br /> becomes <br> in the browser DOM 
-        private void FixSelfClosingTags(List<IToken> tokens)
+        private void FixSelfClosingTags()
         {
+            var tokens = new List<IToken>();
+            foreach (Line line in Lines.Where(token => token.TokenType == TokenType.Line))
+            {
+                foreach (var token in line.Tokens)
+                {
+                    tokens.Add(token);
+                }
+            }
             List<IToken> tags = tokens.Where(t => t.TokenType == TokenType.StartTag || t.TokenType == TokenType.EndTag).ToList();
             for (int i = 0; i < tags.Count; i++)
             {
                 IToken tag = tags[i];
-                if (tag.TokenType == TokenType.StartTag)
+                if (tag.TokenType == TokenType.StartTag &&
+                        (
+                            ((StartTag)tag).LineType == TagLineType.SingleLine || 
+                            ((StartTag)tag).LineType == TagLineType.MultiLineEnd
+                        )
+                    )
                 {
-                    if ((i == tags.Count - 1 || tags[i + 1].TokenType == TokenType.StartTag) && !((StartTag)tag).IsGeneric)
+                    if (
+                        (i == tags.Count - 1 || tags[i + 1].TokenType == TokenType.StartTag) && 
+                            !((StartTag)tag).IsGeneric
+                        )
                     {
                         ((StartTag)tag).IsSelfClosingTag = true;
                     }
@@ -251,7 +289,12 @@ namespace CSHTMLTokenizer
 
         private void OnDataEntry()
         {
-            Tokens.Add(new Text());
+            if(GetCurrentLine().Tokens.Count > 0 && GetCurrentToken().TokenType == TokenType.StartTag)
+            {
+                var startTag = (StartTag)GetCurrentToken();
+                if (startTag.LineType == TagLineType.MultiLine) startTag.LineType = TagLineType.MultiLineEnd;
+            }
+            GetCurrentLine().Add(new Text());
         }
 
         private void OnGotCharData(char ch)
@@ -267,7 +310,7 @@ namespace CSHTMLTokenizer
                 {
                     QuoteMark = QuoteMarkType.DoubleQuote
                 };
-                Tokens.Add(quotedString);
+                GetCurrentLine().Add(quotedString);
                 _machine.Fire(Trigger.Quote);
                 return;
             }
@@ -277,7 +320,7 @@ namespace CSHTMLTokenizer
                 {
                     QuoteMark = QuoteMarkType.SingleQuote
                 };
-                Tokens.Add(quotedString);
+                GetCurrentLine().Add(quotedString);
                 _machine.Fire(Trigger.Quote);
                 return;
             }
@@ -302,7 +345,7 @@ namespace CSHTMLTokenizer
 
                 if (_braces == 0)
                 {
-                    Tokens.Add(new CSBlockEnd());
+                    GetCurrentLine().Add(new CSBlockEnd());
                     _inFunctions = false;
                     _machine.Fire(Trigger.Data);
                     return;
@@ -344,7 +387,7 @@ namespace CSHTMLTokenizer
                         IsFunctions = true,
                         IsOpenBrace = true
                     };
-                    Tokens.Add(token);
+                    GetCurrentLine().Add(token);
                     _braces++;
                     _inFunctions = true;
                     _machine.Fire(Trigger.Data);
@@ -357,7 +400,7 @@ namespace CSHTMLTokenizer
                         IsFunctions = false,
                         IsOpenBrace = _buffer.ToString().StartsWith("@ {")
                     };
-                    Tokens.Add(token);
+                    GetCurrentLine().Add(token);
                     _machine.Fire(Trigger.Data);
                     foreach (char tempCh in _buffer.ToString())
                     {
@@ -373,7 +416,7 @@ namespace CSHTMLTokenizer
                     IsFunctions = false,
                     IsOpenBrace = false
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.Data);
                 foreach (char tempCh in _buffer.ToString())
                 {
@@ -388,7 +431,7 @@ namespace CSHTMLTokenizer
                 {
                     LineType = CSLineType.Implements
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
@@ -398,7 +441,7 @@ namespace CSHTMLTokenizer
                 {
                     LineType = CSLineType.Inherit
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
@@ -408,7 +451,7 @@ namespace CSHTMLTokenizer
                 {
                     LineType = CSLineType.Inject
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
@@ -418,7 +461,7 @@ namespace CSHTMLTokenizer
                 {
                     LineType = CSLineType.Layout
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
@@ -428,7 +471,7 @@ namespace CSHTMLTokenizer
                 {
                     LineType = CSLineType.Page
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
@@ -438,7 +481,7 @@ namespace CSHTMLTokenizer
                 {
                     LineType = CSLineType.Using
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
@@ -448,7 +491,7 @@ namespace CSHTMLTokenizer
                 {
                     LineType = CSLineType.AddTagHelper
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
@@ -458,7 +501,7 @@ namespace CSHTMLTokenizer
                 {
                     LineType = CSLineType.Typeparam
                 };
-                Tokens.Add(token);
+                GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
@@ -505,7 +548,7 @@ namespace CSHTMLTokenizer
 
         private void OnTagOpen()
         {
-            Tokens.Add(new StartTag());
+            GetCurrentLine().Add(new StartTag());
         }
 
         private void OnGotCharTagOpen(char ch)
@@ -545,13 +588,15 @@ namespace CSHTMLTokenizer
         {
             if (IsGreaterThanSign(ch))
             {
+                var startTag = (StartTag)GetCurrentToken();
+                if (startTag.LineType == TagLineType.MultiLine) startTag.LineType = TagLineType.MultiLineEnd;
                 _machine.Fire(Trigger.Data);
             }
         }
 
         private void OnEndTagOpen()
         {
-            Tokens.Add(new EndTag());
+            GetCurrentLine().Add(new EndTag());
         }
 
         private void OnGotCharEndTagOpen(char ch)
@@ -565,7 +610,9 @@ namespace CSHTMLTokenizer
             StartTag startTag = (StartTag)GetCurrentToken();
             AttributeToken atrrib = new AttributeToken();
 
-            if (startTag.Attributes.Count > 0 && startTag.Attributes[startTag.Attributes.Count - 1].TokenType == TokenType.StartOfLine)
+            if (
+                (startTag.LineType == TagLineType.MultiLine || startTag.LineType == TagLineType.MultiLineEnd) && 
+                startTag.Attributes.Count == 0)
             {
                 atrrib.IsFirstInLine = true;
             }
@@ -744,7 +791,13 @@ namespace CSHTMLTokenizer
 
         private IToken GetCurrentToken()
         {
-            return Tokens[Tokens.Count - 1];
+            var line = GetCurrentLine();
+            return line.Tokens[line.Tokens.Count - 1];
+        }
+
+        private Line GetCurrentLine()
+        {
+            return Lines.Last(token => token.TokenType == TokenType.Line);
         }
 
         private bool IsLessThanSign(char ch)
@@ -825,9 +878,9 @@ namespace CSHTMLTokenizer
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
-            foreach (IToken token in Tokens)
+            foreach (Line line in Lines)
             {
-                sb.Append(token.ToHtml());
+                sb.Append(line.ToHtml());
             }
             return sb.ToString();
         }

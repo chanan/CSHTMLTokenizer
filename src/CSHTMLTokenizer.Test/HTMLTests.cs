@@ -10,130 +10,117 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestText()
         {
-            List<IToken> tokens = Tokenizer.Parse("This is a test");
-            Assert.AreEqual(3, tokens.Count);
+            List<Line> lines = Tokenizer.Parse("This is a test");
+            Assert.AreEqual(1, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(1, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, tokens[0].TokenType);
-
-            Assert.AreEqual(TokenType.Text, tokens[1].TokenType);
-            Assert.AreEqual("This is a test", ((Text)tokens[1]).Content);
-
-            Assert.AreEqual(TokenType.EndOfFile, tokens[2].TokenType);
+            Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
+            Assert.AreEqual("This is a test", ((Text)lineTokens[0]).Content);
         }
 
         [TestMethod]
         public void TestSelfClosingTag()
         {
-            List<IToken> tokens = Tokenizer.Parse("This is a test<br />This is another line");
-            Assert.AreEqual(5, tokens.Count);
+            List<Line> lines = Tokenizer.Parse("This is a test<br />This is another line");
+            Assert.AreEqual(1, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(3, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, tokens[0].TokenType);
+            Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
+            Assert.AreEqual("This is a test", ((Text)lineTokens[0]).Content);
 
-            Assert.AreEqual(TokenType.Text, tokens[1].TokenType);
-            Assert.AreEqual("This is a test", ((Text)tokens[1]).Content);
+            Assert.AreEqual(TokenType.StartTag, lineTokens[1].TokenType);
+            Assert.AreEqual("br", ((StartTag)lineTokens[1]).Name.ToString());
+            Assert.AreEqual(true, ((StartTag)lineTokens[1]).IsSelfClosingTag);
 
-            Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
-            Assert.AreEqual("br", ((StartTag)tokens[2]).Name.ToString());
-            Assert.AreEqual(true, ((StartTag)tokens[2]).IsSelfClosingTag);
-
-            Assert.AreEqual(TokenType.Text, tokens[3].TokenType);
-            Assert.AreEqual("This is another line", ((Text)tokens[3]).Content);
-
-            Assert.AreEqual(TokenType.EndOfFile, tokens[4].TokenType);
+            Assert.AreEqual(TokenType.Text, lineTokens[2].TokenType);
+            Assert.AreEqual("This is another line", ((Text)lineTokens[2]).Content);
         }
 
         [TestMethod]
         public void TestFixSelfClosingTag()
         {
-            List<IToken> tokens = Tokenizer.Parse("This is a test<br>This is another line");
-            Assert.AreEqual(5, tokens.Count);
+            List<Line> lines = Tokenizer.Parse("This is a test<br>This is another line");
+            Assert.AreEqual(1, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(3, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, tokens[0].TokenType);
+            Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
+            Assert.AreEqual("This is a test", ((Text)lineTokens[0]).Content);
 
-            Assert.AreEqual(TokenType.Text, tokens[1].TokenType);
-            Assert.AreEqual("This is a test", ((Text)tokens[1]).Content);
+            Assert.AreEqual(TokenType.StartTag, lineTokens[1].TokenType);
+            Assert.AreEqual("br", ((StartTag)lineTokens[1]).Name.ToString());
+            Assert.AreEqual(true, ((StartTag)lineTokens[1]).IsSelfClosingTag);
 
-            Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
-            Assert.AreEqual("br", ((StartTag)tokens[2]).Name.ToString());
-            Assert.AreEqual(true, ((StartTag)tokens[2]).IsSelfClosingTag);
-
-            Assert.AreEqual(TokenType.Text, tokens[3].TokenType);
-            Assert.AreEqual("This is another line", ((Text)tokens[3]).Content);
-
-            Assert.AreEqual(TokenType.EndOfFile, tokens[4].TokenType);
+            Assert.AreEqual(TokenType.Text, lineTokens[2].TokenType);
+            Assert.AreEqual("This is another line", ((Text)lineTokens[2]).Content);
         }
 
         [TestMethod]
         public void TestContainerTag()
         {
-            List<IToken> tokens = Tokenizer.Parse("This is <b>bold</b>");
-            Assert.AreEqual(6, tokens.Count);
+            List<Line> lines = Tokenizer.Parse("This is <b>bold</b>");
+            Assert.AreEqual(1, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(4, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, tokens[0].TokenType);
+            Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
+            Assert.AreEqual("This is ", ((Text)lineTokens[0]).Content);
 
-            Assert.AreEqual(TokenType.Text, tokens[1].TokenType);
-            Assert.AreEqual("This is ", ((Text)tokens[1]).Content);
+            Assert.AreEqual(TokenType.StartTag, lineTokens[1].TokenType);
+            Assert.AreEqual("b", ((StartTag)lineTokens[1]).Name);
+            Assert.AreEqual(false, ((StartTag)lineTokens[1]).IsSelfClosingTag);
 
-            Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
-            Assert.AreEqual("b", ((StartTag)tokens[2]).Name);
-            Assert.AreEqual(false, ((StartTag)tokens[2]).IsSelfClosingTag);
+            Assert.AreEqual(TokenType.Text, lineTokens[2].TokenType);
+            Assert.AreEqual("bold", ((Text)lineTokens[2]).Content);
 
-            Assert.AreEqual(TokenType.Text, tokens[3].TokenType);
-            Assert.AreEqual("bold", ((Text)tokens[3]).Content);
-
-            Assert.AreEqual(TokenType.EndTag, tokens[4].TokenType);
-            Assert.AreEqual("b", ((EndTag)tokens[4]).Name);
-
-            Assert.AreEqual(TokenType.EndOfFile, tokens[5].TokenType);
+            Assert.AreEqual(TokenType.EndTag, lineTokens[3].TokenType);
+            Assert.AreEqual("b", ((EndTag)lineTokens[3]).Name);
         }
 
         [TestMethod]
         public void TestAttributes()
         {
-            List<IToken> tokens = Tokenizer.Parse("This is <div class='boldClass'>bold</div>");
-            Assert.AreEqual(6, tokens.Count);
+            List<Line> lines = Tokenizer.Parse("This is <div class='boldClass'>bold</div>");
+            Assert.AreEqual(1, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(4, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, tokens[0].TokenType);
+            Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
+            Assert.AreEqual("This is ", ((Text)lineTokens[0]).Content);
 
-            Assert.AreEqual(TokenType.Text, tokens[1].TokenType);
-            Assert.AreEqual("This is ", ((Text)tokens[1]).Content);
+            Assert.AreEqual(TokenType.StartTag, lineTokens[1].TokenType);
+            Assert.AreEqual("div", ((StartTag)lineTokens[1]).Name);
+            Assert.AreEqual(false, ((StartTag)lineTokens[1]).IsSelfClosingTag);
+            Assert.AreEqual(1, ((StartTag)lineTokens[1]).Attributes.Count);
 
-            Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
-            Assert.AreEqual("div", ((StartTag)tokens[2]).Name);
-            Assert.AreEqual(false, ((StartTag)tokens[2]).IsSelfClosingTag);
+            Assert.AreEqual(TokenType.Attribute, ((StartTag)lineTokens[1]).Attributes[0].TokenType);
+            Assert.AreEqual("class", ((AttributeToken)((StartTag)lineTokens[1]).Attributes[0]).Name);
+            Assert.AreEqual("boldClass", ((AttributeToken)((StartTag)lineTokens[1]).Attributes[0]).Value.Content);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, ((AttributeToken)((StartTag)lineTokens[1]).Attributes[0]).Value.QuoteMark);
 
-            Assert.AreEqual(1, ((StartTag)tokens[2]).Attributes.Count);
+            Assert.AreEqual(TokenType.Text, lineTokens[2].TokenType);
+            Assert.AreEqual("bold", ((Text)lineTokens[2]).Content);
 
-            Assert.AreEqual(TokenType.Attribute, ((StartTag)tokens[2]).Attributes[0].TokenType);
-            Assert.AreEqual("class", ((AttributeToken)((StartTag)tokens[2]).Attributes[0]).Name);
-            Assert.AreEqual("boldClass", ((AttributeToken)((StartTag)tokens[2]).Attributes[0]).Value.Content);
-            Assert.AreEqual(QuoteMarkType.SingleQuote, ((AttributeToken)((StartTag)tokens[2]).Attributes[0]).Value.QuoteMark);
-
-            Assert.AreEqual(TokenType.Text, tokens[3].TokenType);
-            Assert.AreEqual("bold", ((Text)tokens[3]).Content);
-
-            Assert.AreEqual(TokenType.EndTag, tokens[4].TokenType);
-            Assert.AreEqual("div", ((EndTag)tokens[4]).Name);
-
-            Assert.AreEqual(TokenType.EndOfFile, tokens[5].TokenType);
+            Assert.AreEqual(TokenType.EndTag, lineTokens[3].TokenType);
+            Assert.AreEqual("div", ((EndTag)lineTokens[3]).Name);
         }
 
         [TestMethod]
         public void TestQuotedString()
         {
-            List<IToken> tokens = Tokenizer.Parse("This is a 'quoted string'");
-            Assert.AreEqual(4, tokens.Count);
+            List<Line> lines = Tokenizer.Parse("This is a 'quoted string'");
+            Assert.AreEqual(1, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(2, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, tokens[0].TokenType);
+            Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
+            Assert.AreEqual("This is a ", ((Text)lineTokens[0]).Content);
 
-            Assert.AreEqual(TokenType.Text, tokens[1].TokenType);
-            Assert.AreEqual("This is a ", ((Text)tokens[1]).Content);
-
-            Assert.AreEqual(TokenType.QuotedString, tokens[2].TokenType);
-            Assert.AreEqual("quoted string", ((QuotedString)tokens[2]).Content);
-            Assert.AreEqual(QuoteMarkType.SingleQuote, ((QuotedString)tokens[2]).QuoteMark);
-
-            Assert.AreEqual(TokenType.EndOfFile, tokens[3].TokenType);
+            Assert.AreEqual(TokenType.QuotedString, lineTokens[1].TokenType);
+            Assert.AreEqual("quoted string", ((QuotedString)lineTokens[1]).Content);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, ((QuotedString)lineTokens[1]).QuoteMark);
         }
 
         [TestMethod]
@@ -142,35 +129,45 @@ namespace CSHTMLTokenizer.Test
             string str = @"<div
     class='test'
 />";
-            List<IToken> tokens = Tokenizer.Parse(str);
-            Assert.AreEqual(3, tokens.Count);
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(3, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(1, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, tokens[0].TokenType);
-
-            Assert.AreEqual(TokenType.StartTag, tokens[1].TokenType);
-            StartTag startTag = (StartTag)tokens[1];
+            Assert.AreEqual(TokenType.StartTag, lineTokens[0].TokenType);
+            StartTag startTag = (StartTag)lineTokens[0];
             Assert.AreEqual("div", startTag.Name);
-            Assert.AreEqual(true, startTag.IsSelfClosingTag);
+            Assert.AreEqual(false, startTag.IsSelfClosingTag);
+            Assert.AreEqual(TagLineType.MultiLineStart, startTag.LineType);
+            Assert.AreEqual(0, startTag.Attributes.Count);
 
-            List<IToken> atrributes = startTag.Attributes;
-            Assert.AreEqual(6, atrributes.Count);
+            lineTokens = lines[1].Tokens;
+            Assert.AreEqual(1, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.EndOfLine, atrributes[0].TokenType);
+            Assert.AreEqual(TokenType.StartTag, lineTokens[0].TokenType);
+            startTag = (StartTag)lineTokens[0];
+            Assert.AreEqual("div", startTag.Name);
+            Assert.AreEqual(false, startTag.IsSelfClosingTag);
+            Assert.AreEqual(TagLineType.MultiLine, startTag.LineType);
+            Assert.AreEqual(2, startTag.Attributes.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, atrributes[1].TokenType);
+            var attributes = startTag.Attributes;
+            Assert.AreEqual(TokenType.Text, attributes[0].TokenType);
 
-            Assert.AreEqual(TokenType.Text, atrributes[2].TokenType);
-
-            Assert.AreEqual(TokenType.Attribute, atrributes[3].TokenType);
-            AttributeToken attribute = (AttributeToken)atrributes[3];
+            Assert.AreEqual(TokenType.Attribute, attributes[1].TokenType);
+            AttributeToken attribute = (AttributeToken)attributes[1];
             Assert.AreEqual("class", attribute.Name);
             Assert.AreEqual("test", attribute.Value.Content);
 
-            Assert.AreEqual(TokenType.EndOfLine, atrributes[4].TokenType);
+            lineTokens = lines[2].Tokens;
+            Assert.AreEqual(1, lineTokens.Count);
 
-            Assert.AreEqual(TokenType.StartOfLine, atrributes[5].TokenType);
-
-            Assert.AreEqual(TokenType.EndOfFile, tokens[2].TokenType);
+            Assert.AreEqual(TokenType.StartTag, lineTokens[0].TokenType);
+            startTag = (StartTag)lineTokens[0];
+            Assert.AreEqual("div", startTag.Name);
+            Assert.AreEqual(true, startTag.IsSelfClosingTag);
+            Assert.AreEqual(TagLineType.MultiLineEnd, startTag.LineType);
+            Assert.AreEqual(0, startTag.Attributes.Count);
         }
     }
 }

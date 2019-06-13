@@ -17,8 +17,8 @@ namespace CSHTMLTokenizer.Console
 @functions {
     var list = new List<String> { 'hello', 'world' };
 }";
-            List<IToken> tokens = Tokenizer.Parse(str);
-            System.Console.WriteLine(Print(tokens));
+            List<Line> lines = Tokenizer.Parse(str);
+            System.Console.WriteLine(Print(lines));
 
             System.Console.WriteLine();
             System.Console.WriteLine("------------------------------------------------------");
@@ -26,18 +26,18 @@ namespace CSHTMLTokenizer.Console
 
             str = @"<div
     class='test'
-/>";
+>Test?</div>";
 
-            tokens = Tokenizer.Parse(str);
-            System.Console.WriteLine(Print(tokens));
+            lines = Tokenizer.Parse(str);
+            System.Console.WriteLine(Print(lines));
         }
 
-        public static string Print(List<IToken> tokens)
+        public static string Print(List<Line> lines)
         {
             StringBuilder sb = new StringBuilder();
-            foreach (IToken token in tokens)
+            foreach (Line line in lines)
             {
-                sb.Append(token.ToHtml());
+                sb.Append(line.ToHtml());
             }
             return sb.ToString();
         }

@@ -1,5 +1,6 @@
 ﻿using CSHTMLTokenizer.Tokens;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
 namespace CSHTMLTokenizer.Test
 {
@@ -9,10 +10,12 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestVariable()
         {
-            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is an <b name='@testname' /> test");
-            Assert.AreEqual(5, tokens.Count);
-            Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
-            StartTag startTag = (StartTag)tokens[2];
+            List<Line> lines = Tokenizer.Parse("This is an <b name='@testname' /> test");
+            Assert.AreEqual(1, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(3, lineTokens.Count);
+            Assert.AreEqual(TokenType.StartTag, lineTokens[1].TokenType);
+            StartTag startTag = (StartTag)lineTokens[1];
             Assert.AreEqual("b", startTag.Name);
             Assert.AreEqual(1, startTag.Attributes.Count);
             Assert.AreEqual(TokenType.Attribute, startTag.Attributes[0].TokenType);
@@ -26,10 +29,12 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void TestStatement()
         {
-            System.Collections.Generic.List<IToken> tokens = Tokenizer.Parse("This is an <div onclick='@(() => onclick(\"hello\"))' /> test");
-            Assert.AreEqual(5, tokens.Count);
-            Assert.AreEqual(TokenType.StartTag, tokens[2].TokenType);
-            StartTag startTag = (StartTag)tokens[2];
+            List<Line> lines = Tokenizer.Parse("This is an <div onclick='@(() => onclick(\"hello\"))' /> test");
+            Assert.AreEqual(1, lines.Count);
+            var lineTokens = lines[0].Tokens;
+            Assert.AreEqual(3, lineTokens.Count);
+            Assert.AreEqual(TokenType.StartTag, lineTokens[1].TokenType);
+            StartTag startTag = (StartTag)lineTokens[1];
             Assert.AreEqual("div", startTag.Name);
             Assert.AreEqual(1, startTag.Attributes.Count);
             Assert.AreEqual(TokenType.Attribute, startTag.Attributes[0].TokenType);
