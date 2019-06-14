@@ -9,6 +9,8 @@
         Page,
         Using,
         AddTagHelper,
-        Typeparam
+        Typeparam,
+        Attribute,
+        Namespace
     }
 }

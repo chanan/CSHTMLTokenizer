@@ -380,12 +380,13 @@ namespace CSHTMLTokenizer
             }
             if (IsOpenCurlyBraces(ch))
             {
-                if (_buffer.ToString().StartsWith("functions"))
+                if (_buffer.ToString().StartsWith("functions") || _buffer.ToString().StartsWith("code"))
                 {
                     CSBlockStart token = new CSBlockStart
                     {
                         IsFunctions = true,
-                        IsOpenBrace = true
+                        IsOpenBrace = true,
+                        IsCode = _buffer.ToString().StartsWith("code")
                     };
                     GetCurrentLine().Add(token);
                     _braces++;
@@ -500,6 +501,26 @@ namespace CSHTMLTokenizer
                 CSLine token = new CSLine
                 {
                     LineType = CSLineType.Typeparam
+                };
+                GetCurrentLine().Add(token);
+                _machine.Fire(Trigger.CSLine);
+                return;
+            }
+            if (_buffer.ToString().Trim() == "attribute")
+            {
+                CSLine token = new CSLine
+                {
+                    LineType = CSLineType.Attribute
+                };
+                GetCurrentLine().Add(token);
+                _machine.Fire(Trigger.CSLine);
+                return;
+            }
+            if (_buffer.ToString().Trim() == "namespace")
+            {
+                CSLine token = new CSLine
+                {
+                    LineType = CSLineType.Namespace
                 };
                 GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.CSLine);

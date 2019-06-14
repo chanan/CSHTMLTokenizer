@@ -122,5 +122,49 @@ namespace CSHTMLTokenizer.Test
 
             Assert.AreEqual(TokenType.CSBlockEnd, lines[8].Tokens[0].TokenType);
         }
+
+        [TestMethod]
+        public void NewRazorFeaturesInPreview6()
+        {
+            string str = @"@page '/'
+@namespace MyNamespace
+@attribute [Authorize]
+
+<div @key='key' @onclick='@Clicked' @bind='myValue' @directive @directive='value' 
+@directive:key @directive:key='value' @directive-suffix @directive-suffix='value'
+@directive-suffix:key @directive-suffix:key='value' />
+
+@code {
+    public void Clicked()
+    {
+        //Comments arent supported yet
+    }
+}
+";
+
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(15, lines.Count);
+
+            Assert.AreEqual(TokenType.CSLine, lines[1].Tokens[0].TokenType);
+            Assert.AreEqual(CSLineType.Namespace, ((CSLine)lines[1].Tokens[0]).LineType);
+
+            Assert.AreEqual(TokenType.CSLine, lines[2].Tokens[0].TokenType);
+            Assert.AreEqual(CSLineType.Attribute, ((CSLine)lines[2].Tokens[0]).LineType);
+
+            Assert.AreEqual(TokenType.StartTag, lines[4].Tokens[0].TokenType);
+            var startTag = (StartTag)lines[4].Tokens[0];
+            Assert.AreEqual(TokenType.Attribute, startTag.Attributes[0].TokenType);
+            var attribute = (AttributeToken)startTag.Attributes[0];
+            Assert.AreEqual("@key", attribute.Name);
+            Assert.AreEqual(TokenType.QuotedString, attribute.Value.TokenType);
+            Assert.AreEqual("key", ((QuotedString)attribute.Value).Content);
+            attribute = (AttributeToken)startTag.Attributes[1];
+            Assert.AreEqual("@onclick", attribute.Name);
+            Assert.AreEqual("Clicked", ((QuotedString)attribute.Value).Content);
+            Assert.AreEqual(true, ((QuotedString)attribute.Value).IsCSStatement);
+
+            Assert.AreEqual(TokenType.CSBlockStart, lines[8].Tokens[0].TokenType);
+            Assert.AreEqual(true, ((CSBlockStart)lines[8].Tokens[0]).IsCode);
+        }
     }
 }

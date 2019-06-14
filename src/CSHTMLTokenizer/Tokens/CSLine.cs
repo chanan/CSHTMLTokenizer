@@ -42,6 +42,10 @@ namespace CSHTMLTokenizer.Tokens
                     return "using";
                 case CSLineType.Typeparam:
                     return "typeparam";
+                case CSLineType.Namespace:
+                    return "namespace";
+                case CSLineType.Attribute:
+                    return "attribute";
                 default:
                     return "";
             }
