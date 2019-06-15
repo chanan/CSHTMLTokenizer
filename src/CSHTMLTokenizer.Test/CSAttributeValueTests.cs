@@ -12,7 +12,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is an <b name='@testname' /> test");
             Assert.AreEqual(1, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(3, lineTokens.Count);
             Assert.AreEqual(TokenType.StartTag, lineTokens[1].TokenType);
             StartTag startTag = (StartTag)lineTokens[1];
@@ -31,7 +31,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is an <div onclick='@(() => onclick(\"hello\"))' /> test");
             Assert.AreEqual(1, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(3, lineTokens.Count);
             Assert.AreEqual(TokenType.StartTag, lineTokens[1].TokenType);
             StartTag startTag = (StartTag)lineTokens[1];

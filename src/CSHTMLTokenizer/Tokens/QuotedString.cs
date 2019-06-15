@@ -13,6 +13,7 @@ namespace CSHTMLTokenizer.Tokens
         public Guid Id { get; } = Guid.NewGuid();
         public bool HasParentheses { get; set; }
         public bool IsCSStatement { get; set; }
+        public LineType LineType { get; set; } = LineType.SingleLine;
 
         public void Append(char ch)
         {
@@ -23,24 +24,31 @@ namespace CSHTMLTokenizer.Tokens
         {
             string quote = GetQuoteChar();
             StringBuilder sb = new StringBuilder();
-            sb.Append(quote);
-            if (IsCSStatement)
-            {
-                sb.Append('@');
-            }
 
-            if (HasParentheses)
+            if (LineType == LineType.SingleLine || LineType == LineType.MultiLineStart)
             {
-                sb.Append('(');
+                sb.Append(quote);
+                if (IsCSStatement)
+                {
+                    sb.Append('@');
+                }
+
+                if (HasParentheses)
+                {
+                    sb.Append('(');
+                }
             }
 
             sb.Append(_content);
-            if (HasParentheses)
-            {
-                sb.Append(')');
-            }
 
-            sb.Append(quote);
+            if (LineType == LineType.SingleLine || LineType == LineType.MultiLineEnd)
+            {
+                if (HasParentheses)
+                {
+                    sb.Append(')');
+                }
+                sb.Append(quote);
+            }
             return sb.ToString();
         }
 

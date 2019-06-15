@@ -30,6 +30,17 @@ namespace CSHTMLTokenizer.Console
 
             lines = Tokenizer.Parse(str);
             System.Console.WriteLine(Print(lines));
+
+            System.Console.WriteLine();
+            System.Console.WriteLine("------------------------------------------------------");
+            System.Console.WriteLine();
+
+            str = @"'color: black;
+                padding: 32px;
+                background-color: hotpink;'";
+
+            lines = Tokenizer.Parse(str);
+            System.Console.WriteLine(Print(lines));
         }
 
         public static string Print(List<Line> lines)

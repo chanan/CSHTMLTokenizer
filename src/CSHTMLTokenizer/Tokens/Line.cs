@@ -20,12 +20,16 @@ namespace CSHTMLTokenizer.Tokens
 
         public string ToHtml()
         {
-            var sb = new StringBuilder();
-            foreach(var token in Tokens)
+            StringBuilder sb = new StringBuilder();
+            foreach (IToken token in Tokens)
             {
                 sb.Append(token.ToHtml());
             }
-            if(!LastLine) sb.Append(Environment.NewLine);
+            if (!LastLine)
+            {
+                sb.Append(Environment.NewLine);
+            }
+
             return sb.ToString();
         }
 

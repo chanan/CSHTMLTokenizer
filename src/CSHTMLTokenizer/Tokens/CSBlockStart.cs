@@ -23,7 +23,7 @@ namespace CSHTMLTokenizer.Tokens
             sb.Append('@');
             if (IsFunctions)
             {
-                if(IsCode)
+                if (IsCode)
                 {
                     sb.Append("code");
                 }

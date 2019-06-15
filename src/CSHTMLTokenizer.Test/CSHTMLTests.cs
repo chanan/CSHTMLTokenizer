@@ -38,7 +38,7 @@ namespace CSHTMLTokenizer.Test
             List<Line> lines = Tokenizer.Parse(str);
             Assert.AreEqual(3, lines.Count);
 
-            Assert.AreEqual(TokenType.CSBlockStart,lines[0].Tokens[0].TokenType);
+            Assert.AreEqual(TokenType.CSBlockStart, lines[0].Tokens[0].TokenType);
 
             Assert.AreEqual("foreach(var item in Items) {", ((Text)lines[0].Tokens[1]).Content.Trim());
 
@@ -47,7 +47,7 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(true, startTag.IsSelfClosingTag);
             Assert.AreEqual("RenderItem", startTag.Name);
             Assert.AreEqual(1, startTag.Attributes.Count);
-            Assert.AreEqual(TagLineType.SingleLine, startTag.LineType);
+            Assert.AreEqual(LineType.SingleLine, startTag.LineType);
             Assert.AreEqual("Item", ((AttributeToken)startTag.Attributes[0]).Name);
             Assert.AreEqual(true, ((AttributeToken)startTag.Attributes[0]).Value.IsCSStatement);
             Assert.AreEqual(false, ((AttributeToken)startTag.Attributes[0]).Value.HasParentheses);
@@ -152,19 +152,45 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(CSLineType.Attribute, ((CSLine)lines[2].Tokens[0]).LineType);
 
             Assert.AreEqual(TokenType.StartTag, lines[4].Tokens[0].TokenType);
-            var startTag = (StartTag)lines[4].Tokens[0];
+            StartTag startTag = (StartTag)lines[4].Tokens[0];
             Assert.AreEqual(TokenType.Attribute, startTag.Attributes[0].TokenType);
-            var attribute = (AttributeToken)startTag.Attributes[0];
+            AttributeToken attribute = (AttributeToken)startTag.Attributes[0];
             Assert.AreEqual("@key", attribute.Name);
             Assert.AreEqual(TokenType.QuotedString, attribute.Value.TokenType);
-            Assert.AreEqual("key", ((QuotedString)attribute.Value).Content);
+            Assert.AreEqual("key", attribute.Value.Content);
             attribute = (AttributeToken)startTag.Attributes[1];
             Assert.AreEqual("@onclick", attribute.Name);
-            Assert.AreEqual("Clicked", ((QuotedString)attribute.Value).Content);
-            Assert.AreEqual(true, ((QuotedString)attribute.Value).IsCSStatement);
+            Assert.AreEqual("Clicked", attribute.Value.Content);
+            Assert.AreEqual(true, attribute.Value.IsCSStatement);
 
             Assert.AreEqual(TokenType.CSBlockStart, lines[8].Tokens[0].TokenType);
             Assert.AreEqual(true, ((CSBlockStart)lines[8].Tokens[0]).IsCode);
+        }
+
+        [TestMethod]
+        public void MultiLineString()
+        {
+            string str = @"'color: black;
+                padding: 32px;
+                background-color: hotpink;'";
+
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(3, lines.Count);
+
+            Assert.AreEqual(TokenType.QuotedString, lines[0].Tokens[0].TokenType);
+            var quotedString = (QuotedString)lines[0].Tokens[0];
+            Assert.AreEqual(LineType.MultiLineStart, quotedString.LineType);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, quotedString.QuoteMark);
+
+            Assert.AreEqual(TokenType.QuotedString, lines[1].Tokens[0].TokenType);
+            quotedString = (QuotedString)lines[1].Tokens[0];
+            Assert.AreEqual(LineType.MultiLine, quotedString.LineType);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, quotedString.QuoteMark);
+
+            Assert.AreEqual(TokenType.QuotedString, lines[2].Tokens[0].TokenType);
+            quotedString = (QuotedString)lines[2].Tokens[0];
+            Assert.AreEqual(LineType.MultiLineEnd, quotedString.LineType);
+            Assert.AreEqual(QuoteMarkType.SingleQuote, quotedString.QuoteMark);
         }
     }
 }

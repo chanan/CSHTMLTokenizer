@@ -1,6 +1,5 @@
 ﻿using CSHTMLTokenizer.Tokens;
 using Stateless;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,14 +12,14 @@ namespace CSHTMLTokenizer
         {
             Start, Data, TagOpen, EOF, TagName, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
             AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS,
-            EndOfLine, BeforeAttributeNameEndOfLine, BeforeAttributeNameWhiteSpace
+            EndOfLine, BeforeAttributeNameEndOfLine, BeforeAttributeNameWhiteSpace, BeforeQuotedStringEndOfLine
         }
 
         private enum Trigger
         {
             GotChar, EOF, OpenTag, TagName, Data, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
             AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS,
-            EndOfLine, BeforeAttributeNameWhiteSpace
+            EndOfLine, BeforeAttributeNameWhiteSpace, BeforeQuotedStringEndOfLine
         }
 
         private readonly StateMachine<State, Trigger> _machine = new StateMachine<State, Trigger>(State.Start);
@@ -139,7 +138,12 @@ namespace CSHTMLTokenizer
             _machine.Configure(State.Quote)
                 .OnEntryFrom(_gotCharTrigger, OnGotCharQuote)
                 .PermitReentry(Trigger.GotChar)
-                .Permit(Trigger.Data, State.Data);
+                .Permit(Trigger.Data, State.Data)
+                .Permit(Trigger.EndOfLine, State.BeforeQuotedStringEndOfLine);
+
+            _machine.Configure(State.BeforeQuotedStringEndOfLine)
+                .OnEntryFrom(Trigger.EndOfLine, OnBeforeQuotedStringEndOfLine)
+                .Permit(Trigger.Quote, State.Quote);
 
             _machine.Configure(State.CSLine)
               .OnEntryFrom(_gotCharTrigger, OnGotCharCsLine)
@@ -198,7 +202,7 @@ namespace CSHTMLTokenizer
 
         private void RemoveAllEmpty()
         {
-            foreach(var line in Lines.Where(token => token.TokenType == TokenType.Line))
+            foreach (Line line in Lines.Where(token => token.TokenType == TokenType.Line))
             {
                 line.Tokens = RemoveEmpty(line.Tokens);
             }
@@ -211,22 +215,37 @@ namespace CSHTMLTokenizer
 
         private void OnBeforeAttributeNameEndOfLine()
         {
-            //TODO: Figure this mess out...
-
-            var currentStartTag = (StartTag)GetCurrentToken();
-            currentStartTag.LineType = currentStartTag.LineType == TagLineType.SingleLine ? TagLineType.MultiLineStart : TagLineType.MultiLine;
-            var newLine = new Line();
-            var newStartTag = new StartTag
+            StartTag currentStartTag = (StartTag)GetCurrentToken();
+            currentStartTag.LineType = currentStartTag.LineType == LineType.SingleLine ? LineType.MultiLineStart : LineType.MultiLine;
+            Line newLine = new Line();
+            StartTag newStartTag = new StartTag
             {
-                LineType = currentStartTag.LineType == TagLineType.SingleLine ? TagLineType.MultiLineStart : TagLineType.MultiLine
+                LineType = currentStartTag.LineType == LineType.SingleLine ? LineType.MultiLineStart : LineType.MultiLine
             };
-            foreach(var ch in currentStartTag.Name)
+            foreach (char ch in currentStartTag.Name)
             {
                 newStartTag.Append(ch);
             }
             newLine.Add(newStartTag);
             Lines.Add(newLine);
             _machine.Fire(Trigger.BeforeAttributeName);
+        }
+
+        private void OnBeforeQuotedStringEndOfLine()
+        {
+            QuotedString currentQuotedString = (QuotedString)GetCurrentToken();
+            currentQuotedString.LineType = currentQuotedString.LineType == LineType.SingleLine ? LineType.MultiLineStart : LineType.MultiLine;
+            Line newLine = new Line();
+            QuotedString newQuotedString = new QuotedString
+            {
+                LineType = currentQuotedString.LineType == LineType.SingleLine ? LineType.MultiLineStart : LineType.MultiLine,
+                QuoteMark = currentQuotedString.QuoteMark,
+                HasParentheses = currentQuotedString.HasParentheses,
+                IsCSStatement = currentQuotedString.IsCSStatement
+            };
+            newLine.Add(newQuotedString);
+            Lines.Add(newLine);
+            _machine.Fire(Trigger.Quote);
         }
 
         private void OnEndOfLine()
@@ -237,7 +256,7 @@ namespace CSHTMLTokenizer
 
         private void FixEmptyAttributes()
         {
-            foreach(Line line in Lines.Where(token => token.TokenType == TokenType.Line))
+            foreach (Line line in Lines.Where(token => token.TokenType == TokenType.Line))
             {
                 IEnumerable<IToken> startTokens = line.Tokens.Where(t => t.TokenType == TokenType.StartTag);
                 foreach (IToken startToken in startTokens)
@@ -252,10 +271,10 @@ namespace CSHTMLTokenizer
         //so <br /> becomes <br> in the browser DOM 
         private void FixSelfClosingTags()
         {
-            var tokens = new List<IToken>();
+            List<IToken> tokens = new List<IToken>();
             foreach (Line line in Lines.Where(token => token.TokenType == TokenType.Line))
             {
-                foreach (var token in line.Tokens)
+                foreach (IToken token in line.Tokens)
                 {
                     tokens.Add(token);
                 }
@@ -266,13 +285,13 @@ namespace CSHTMLTokenizer
                 IToken tag = tags[i];
                 if (tag.TokenType == TokenType.StartTag &&
                         (
-                            ((StartTag)tag).LineType == TagLineType.SingleLine || 
-                            ((StartTag)tag).LineType == TagLineType.MultiLineEnd
+                            ((StartTag)tag).LineType == LineType.SingleLine ||
+                            ((StartTag)tag).LineType == LineType.MultiLineEnd
                         )
                     )
                 {
                     if (
-                        (i == tags.Count - 1 || tags[i + 1].TokenType == TokenType.StartTag) && 
+                        (i == tags.Count - 1 || tags[i + 1].TokenType == TokenType.StartTag) &&
                             !((StartTag)tag).IsGeneric
                         )
                     {
@@ -289,10 +308,13 @@ namespace CSHTMLTokenizer
 
         private void OnDataEntry()
         {
-            if(GetCurrentLine().Tokens.Count > 0 && GetCurrentToken().TokenType == TokenType.StartTag)
+            if (GetCurrentLine().Tokens.Count > 0 && GetCurrentToken().TokenType == TokenType.StartTag)
             {
-                var startTag = (StartTag)GetCurrentToken();
-                if (startTag.LineType == TagLineType.MultiLine) startTag.LineType = TagLineType.MultiLineEnd;
+                StartTag startTag = (StartTag)GetCurrentToken();
+                if (startTag.LineType == LineType.MultiLine)
+                {
+                    startTag.LineType = LineType.MultiLineEnd;
+                }
             }
             GetCurrentLine().Add(new Text());
         }
@@ -531,20 +553,36 @@ namespace CSHTMLTokenizer
         private void OnGotCharQuote(char ch)
         {
             QuotedString quotedString = (QuotedString)GetCurrentToken();
+            if (IsN(ch))
+            {
+                _machine.Fire(Trigger.EndOfLine);
+                return;
+            }
+            if (IsCr(ch))
+            {
+                return;
+            }
             if (IsQuotationMark(ch) && quotedString.QuoteMark == QuoteMarkType.DoubleQuote)
             {
+                if (quotedString.LineType == LineType.MultiLine)
+                {
+                    quotedString.LineType = LineType.MultiLineEnd;
+                }
+
                 _machine.Fire(Trigger.Data);
                 return;
             }
-            else if (IsApostrophe(ch) && quotedString.QuoteMark == QuoteMarkType.SingleQuote)
+            if (IsApostrophe(ch) && quotedString.QuoteMark == QuoteMarkType.SingleQuote)
             {
+                if (quotedString.LineType == LineType.MultiLine)
+                {
+                    quotedString.LineType = LineType.MultiLineEnd;
+                }
+
                 _machine.Fire(Trigger.Data);
                 return;
             }
-            else
-            {
-                quotedString.Append(ch);
-            }
+            quotedString.Append(ch);
         }
 
         private void OnGotCharCsLine(char ch)
@@ -609,8 +647,12 @@ namespace CSHTMLTokenizer
         {
             if (IsGreaterThanSign(ch))
             {
-                var startTag = (StartTag)GetCurrentToken();
-                if (startTag.LineType == TagLineType.MultiLine) startTag.LineType = TagLineType.MultiLineEnd;
+                StartTag startTag = (StartTag)GetCurrentToken();
+                if (startTag.LineType == LineType.MultiLine)
+                {
+                    startTag.LineType = LineType.MultiLineEnd;
+                }
+
                 _machine.Fire(Trigger.Data);
             }
         }
@@ -632,7 +674,7 @@ namespace CSHTMLTokenizer
             AttributeToken atrrib = new AttributeToken();
 
             if (
-                (startTag.LineType == TagLineType.MultiLine || startTag.LineType == TagLineType.MultiLineEnd) && 
+                (startTag.LineType == LineType.MultiLine || startTag.LineType == LineType.MultiLineEnd) &&
                 startTag.Attributes.Count == 0)
             {
                 atrrib.IsFirstInLine = true;
@@ -812,7 +854,7 @@ namespace CSHTMLTokenizer
 
         private IToken GetCurrentToken()
         {
-            var line = GetCurrentLine();
+            Line line = GetCurrentLine();
             return line.Tokens[line.Tokens.Count - 1];
         }
 

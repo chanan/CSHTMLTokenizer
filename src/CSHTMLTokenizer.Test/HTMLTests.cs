@@ -12,7 +12,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is a test");
             Assert.AreEqual(1, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(1, lineTokens.Count);
 
             Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
@@ -24,7 +24,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is a test<br />This is another line");
             Assert.AreEqual(1, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(3, lineTokens.Count);
 
             Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
@@ -43,7 +43,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is a test<br>This is another line");
             Assert.AreEqual(1, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(3, lineTokens.Count);
 
             Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
@@ -62,7 +62,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is <b>bold</b>");
             Assert.AreEqual(1, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(4, lineTokens.Count);
 
             Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
@@ -84,7 +84,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is <div class='boldClass'>bold</div>");
             Assert.AreEqual(1, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(4, lineTokens.Count);
 
             Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
@@ -112,7 +112,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is a 'quoted string'");
             Assert.AreEqual(1, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(2, lineTokens.Count);
 
             Assert.AreEqual(TokenType.Text, lineTokens[0].TokenType);
@@ -131,14 +131,14 @@ namespace CSHTMLTokenizer.Test
 />";
             List<Line> lines = Tokenizer.Parse(str);
             Assert.AreEqual(3, lines.Count);
-            var lineTokens = lines[0].Tokens;
+            List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(1, lineTokens.Count);
 
             Assert.AreEqual(TokenType.StartTag, lineTokens[0].TokenType);
             StartTag startTag = (StartTag)lineTokens[0];
             Assert.AreEqual("div", startTag.Name);
             Assert.AreEqual(false, startTag.IsSelfClosingTag);
-            Assert.AreEqual(TagLineType.MultiLineStart, startTag.LineType);
+            Assert.AreEqual(LineType.MultiLineStart, startTag.LineType);
             Assert.AreEqual(0, startTag.Attributes.Count);
 
             lineTokens = lines[1].Tokens;
@@ -148,10 +148,10 @@ namespace CSHTMLTokenizer.Test
             startTag = (StartTag)lineTokens[0];
             Assert.AreEqual("div", startTag.Name);
             Assert.AreEqual(false, startTag.IsSelfClosingTag);
-            Assert.AreEqual(TagLineType.MultiLine, startTag.LineType);
+            Assert.AreEqual(LineType.MultiLine, startTag.LineType);
             Assert.AreEqual(2, startTag.Attributes.Count);
 
-            var attributes = startTag.Attributes;
+            List<IToken> attributes = startTag.Attributes;
             Assert.AreEqual(TokenType.Text, attributes[0].TokenType);
 
             Assert.AreEqual(TokenType.Attribute, attributes[1].TokenType);
@@ -166,7 +166,7 @@ namespace CSHTMLTokenizer.Test
             startTag = (StartTag)lineTokens[0];
             Assert.AreEqual("div", startTag.Name);
             Assert.AreEqual(true, startTag.IsSelfClosingTag);
-            Assert.AreEqual(TagLineType.MultiLineEnd, startTag.LineType);
+            Assert.AreEqual(LineType.MultiLineEnd, startTag.LineType);
             Assert.AreEqual(0, startTag.Attributes.Count);
         }
     }

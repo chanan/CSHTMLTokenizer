@@ -13,14 +13,17 @@ namespace CSHTMLTokenizer.Tokens
         public List<IToken> Attributes { get; set; } = new List<IToken>();
         public bool IsEmpty => _name.Length == 0;
         public Guid Id { get; } = Guid.NewGuid();
-        public TagLineType LineType { get; set; } = TagLineType.SingleLine;
+        public LineType LineType { get; set; } = LineType.SingleLine;
 
         private readonly StringBuilder _name = new StringBuilder();
 
         public string ToHtml()
         {
             StringBuilder sb = new StringBuilder();
-            if(LineType == TagLineType.SingleLine || LineType == TagLineType.MultiLineStart) sb.Append('<').Append(Name);
+            if (LineType == LineType.SingleLine || LineType == LineType.MultiLineStart)
+            {
+                sb.Append('<').Append(Name);
+            }
 
             if (Attributes.Count > 0)
             {
@@ -30,12 +33,12 @@ namespace CSHTMLTokenizer.Tokens
                 }
             }
 
-            if(LineType == TagLineType.SingleLine || LineType == TagLineType.MultiLineEnd)
+            if (LineType == LineType.SingleLine || LineType == LineType.MultiLineEnd)
             {
                 if (IsSelfClosingTag && !IsGeneric)
                 {
-                    string spacer = 
-                        (LineType == TagLineType.MultiLineEnd && Attributes.Count == 0)
+                    string spacer =
+                        (LineType == LineType.MultiLineEnd && Attributes.Count == 0)
                         ? string.Empty : " ";
                     sb.Append(spacer).Append("/");
                 }
