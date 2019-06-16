@@ -35,9 +35,26 @@ namespace CSHTMLTokenizer.Console
             System.Console.WriteLine("------------------------------------------------------");
             System.Console.WriteLine();
 
-            str = @"'color: black;
-                padding: 32px;
-                background-color: hotpink;'";
+            str = @"<div class=""@hover"">
+    Hover to change color.
+</div>
+
+@code {
+    private string color = ""white"";
+
+        protected override async Task OnInitAsync()
+        {
+            hover = await Styled.Css($@""
+            padding: 32px;
+            background-color: hotpink;
+            font-size: 24px;
+            border-radius: 4px;
+            &:hover {{
+                color: {color};
+            }}
+        "");
+        }
+    }";
 
             lines = Tokenizer.Parse(str);
             System.Console.WriteLine(Print(lines));

@@ -170,27 +170,30 @@ namespace CSHTMLTokenizer.Test
         [TestMethod]
         public void MultiLineString()
         {
-            string str = @"'color: black;
+            string str = @"hover = await Styled.Css($@""
                 padding: 32px;
-                background-color: hotpink;'";
+                background-color: hotpink;""";
 
             List<Line> lines = Tokenizer.Parse(str);
             Assert.AreEqual(3, lines.Count);
 
-            Assert.AreEqual(TokenType.QuotedString, lines[0].Tokens[0].TokenType);
-            var quotedString = (QuotedString)lines[0].Tokens[0];
+            Assert.AreEqual(TokenType.Text, lines[0].Tokens[0].TokenType);
+
+            Assert.AreEqual(TokenType.QuotedString, lines[0].Tokens[1].TokenType);
+            QuotedString quotedString = (QuotedString)lines[0].Tokens[1];
             Assert.AreEqual(LineType.MultiLineStart, quotedString.LineType);
-            Assert.AreEqual(QuoteMarkType.SingleQuote, quotedString.QuoteMark);
+            Assert.AreEqual(QuoteMarkType.DoubleQuote, quotedString.QuoteMark);
+            Assert.AreEqual(true, quotedString.IsMultiLineStatement);
 
             Assert.AreEqual(TokenType.QuotedString, lines[1].Tokens[0].TokenType);
             quotedString = (QuotedString)lines[1].Tokens[0];
             Assert.AreEqual(LineType.MultiLine, quotedString.LineType);
-            Assert.AreEqual(QuoteMarkType.SingleQuote, quotedString.QuoteMark);
+            Assert.AreEqual(QuoteMarkType.DoubleQuote, quotedString.QuoteMark);
 
             Assert.AreEqual(TokenType.QuotedString, lines[2].Tokens[0].TokenType);
             quotedString = (QuotedString)lines[2].Tokens[0];
             Assert.AreEqual(LineType.MultiLineEnd, quotedString.LineType);
-            Assert.AreEqual(QuoteMarkType.SingleQuote, quotedString.QuoteMark);
+            Assert.AreEqual(QuoteMarkType.DoubleQuote, quotedString.QuoteMark);
         }
     }
 }

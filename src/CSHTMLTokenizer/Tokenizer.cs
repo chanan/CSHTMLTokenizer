@@ -19,7 +19,7 @@ namespace CSHTMLTokenizer
         {
             GotChar, EOF, OpenTag, TagName, Data, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
             AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS,
-            EndOfLine, BeforeAttributeNameWhiteSpace, BeforeQuotedStringEndOfLine
+            EndOfLine, BeforeAttributeNameWhiteSpace, BeforeQuotedStringEndOfLine, MultiLineQuote
         }
 
         private readonly StateMachine<State, Trigger> _machine = new StateMachine<State, Trigger>(State.Start);
@@ -133,10 +133,12 @@ namespace CSHTMLTokenizer
                .PermitReentry(Trigger.GotChar)
                .Permit(Trigger.Data, State.Data)
                .Permit(Trigger.CSLine, State.CSLine)
-               .Permit(Trigger.EOF, State.EOF);
+               .Permit(Trigger.EOF, State.EOF)
+               .Permit(Trigger.MultiLineQuote, State.Quote);
 
             _machine.Configure(State.Quote)
                 .OnEntryFrom(_gotCharTrigger, OnGotCharQuote)
+                .OnEntryFrom(Trigger.MultiLineQuote, OnEntryMultiLineQuote)
                 .PermitReentry(Trigger.GotChar)
                 .Permit(Trigger.Data, State.Data)
                 .Permit(Trigger.EndOfLine, State.BeforeQuotedStringEndOfLine);
@@ -241,7 +243,8 @@ namespace CSHTMLTokenizer
                 LineType = currentQuotedString.LineType == LineType.SingleLine ? LineType.MultiLineStart : LineType.MultiLine,
                 QuoteMark = currentQuotedString.QuoteMark,
                 HasParentheses = currentQuotedString.HasParentheses,
-                IsCSStatement = currentQuotedString.IsCSStatement
+                IsCSStatement = currentQuotedString.IsCSStatement,
+                IsMultiLineStatement = currentQuotedString.IsMultiLineStatement
             };
             newLine.Add(newQuotedString);
             Lines.Add(newLine);
@@ -448,6 +451,13 @@ namespace CSHTMLTokenizer
                 _machine.Fire(_gotCharTrigger, ch);
                 return;
             }
+            if (IsQuotationMark(ch))
+            {
+                if (_buffer.ToString().Trim() == "\"")
+                {
+                    _machine.Fire(Trigger.MultiLineQuote);
+                }
+            }
             if (_buffer.ToString().Trim() == "implements")
             {
                 CSLine token = new CSLine
@@ -548,6 +558,17 @@ namespace CSHTMLTokenizer
                 _machine.Fire(Trigger.CSLine);
                 return;
             }
+        }
+
+        private void OnEntryMultiLineQuote()
+        {
+            QuotedString multiLineQuote = new QuotedString
+            {
+                LineType = LineType.SingleLine,
+                IsMultiLineStatement = true,
+                QuoteMark = QuoteMarkType.DoubleQuote
+            };
+            GetCurrentLine().Tokens.Add(multiLineQuote);
         }
 
         private void OnGotCharQuote(char ch)

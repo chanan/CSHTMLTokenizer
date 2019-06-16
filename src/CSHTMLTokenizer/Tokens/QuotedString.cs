@@ -8,11 +8,12 @@ namespace CSHTMLTokenizer.Tokens
         private readonly StringBuilder _content = new StringBuilder();
         public string Content => _content.ToString();
         public TokenType TokenType => TokenType.QuotedString;
-        public bool IsEmpty => _content.Length == 0;
+        public bool IsEmpty => !IsMultiLineStatement && _content.Length == 0;
         public QuoteMarkType QuoteMark { get; set; }
         public Guid Id { get; } = Guid.NewGuid();
         public bool HasParentheses { get; set; }
         public bool IsCSStatement { get; set; }
+        public bool IsMultiLineStatement { get; set; }
         public LineType LineType { get; set; } = LineType.SingleLine;
 
         public void Append(char ch)
@@ -27,6 +28,10 @@ namespace CSHTMLTokenizer.Tokens
 
             if (LineType == LineType.SingleLine || LineType == LineType.MultiLineStart)
             {
+                if (IsMultiLineStatement)
+                {
+                    sb.Append('@');
+                }
                 sb.Append(quote);
                 if (IsCSStatement)
                 {
