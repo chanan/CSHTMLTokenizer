@@ -249,5 +249,21 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(false, ((StartTag)lines[0].Tokens[0]).IsSelfClosingTag);
             Assert.AreEqual(true, ((StartTag)lines[0].Tokens[2]).IsSelfClosingTag);
         }
+
+        [TestMethod]
+        public void ForLoopError()
+        {
+            string str = @"<div class=""carousel-inner"">
+        @for (int i = 0; i < items.Count; i++)
+        {
+            Item item = items[i];
+            <CarouselItem IsActive=""@(SecondIndex == i)"" src=""@item.Source"" alt=""@item.Alt"">
+                <CarouselCaption CaptionText=""@item.Caption"" HeaderText=""@item.Header"" />
+            </CarouselItem>
+        }
+    </div>";
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(9, lines.Count);
+        }
     }
 }

@@ -43,6 +43,7 @@ namespace CSHTMLTokenizer.Test
         {
             List<Line> lines = Tokenizer.Parse("This is a test<br>This is another line");
             Assert.AreEqual(1, lines.Count);
+
             List<IToken> lineTokens = lines[0].Tokens;
             Assert.AreEqual(3, lineTokens.Count);
 
@@ -137,7 +138,7 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(TokenType.StartTag, lineTokens[0].TokenType);
             StartTag startTag = (StartTag)lineTokens[0];
             Assert.AreEqual("div", startTag.Name);
-            Assert.AreEqual(false, startTag.IsSelfClosingTag);
+            Assert.AreEqual(true, startTag.IsSelfClosingTag);
             Assert.AreEqual(LineType.MultiLineStart, startTag.LineType);
             Assert.AreEqual(0, startTag.Attributes.Count);
 
@@ -147,7 +148,7 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(TokenType.StartTag, lineTokens[0].TokenType);
             startTag = (StartTag)lineTokens[0];
             Assert.AreEqual("div", startTag.Name);
-            Assert.AreEqual(false, startTag.IsSelfClosingTag);
+            Assert.AreEqual(true, startTag.IsSelfClosingTag);
             Assert.AreEqual(LineType.MultiLine, startTag.LineType);
             Assert.AreEqual(2, startTag.Attributes.Count);
 

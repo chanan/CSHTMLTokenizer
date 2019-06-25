@@ -61,6 +61,7 @@ namespace CSHTMLTokenizer
                 .Permit(Trigger.TagName, State.TagName)
                 .Permit(Trigger.SelfClosingStartTag, State.SelfClosingStartTag)
                 .Permit(Trigger.EndTagOpen, State.EndTagOpen)
+                .Permit(Trigger.Data, State.Data)
                 .PermitReentry(Trigger.OpenTag);
 
             _machine.Configure(State.TagName)
@@ -394,27 +395,27 @@ namespace CSHTMLTokenizer
             List<IToken> tags = tokens.Where(t =>
                 t.TokenType == TokenType.EndTag ||
                 (
-                    t.TokenType == TokenType.StartTag && 
-                    !((StartTag)t).IsGeneric && 
+                    t.TokenType == TokenType.StartTag &&
+                    !((StartTag)t).IsGeneric &&
                     (((StartTag)t).LineType == LineType.SingleLine || ((StartTag)t).LineType == LineType.MultiLineStart)
                 )
             ).ToList();
-            var stack = new Stack<IToken>();
-            foreach(var tag in tags)
+            Stack<IToken> stack = new Stack<IToken>();
+            foreach (IToken tag in tags)
             {
-                if(tag.TokenType == TokenType.StartTag)
+                if (tag.TokenType == TokenType.StartTag)
                 {
                     stack.Push(tag);
                 }
                 if (tag.TokenType == TokenType.EndTag)
                 {
-                    var found = false;
+                    bool found = false;
                     do
                     {
-                        var popped = stack.Pop();
-                        if(popped.TokenType == TokenType.StartTag)
+                        IToken popped = stack.Pop();
+                        if (popped.TokenType == TokenType.StartTag)
                         {
-                            if(((StartTag)popped).Name == ((EndTag)tag).Name)
+                            if (((StartTag)popped).Name == ((EndTag)tag).Name)
                             {
                                 found = true;
                             }
@@ -430,13 +431,21 @@ namespace CSHTMLTokenizer
                     } while (!found);
                 }
             }
-            List<IToken> startTags = tokens.Where(t => t.TokenType == TokenType.StartTag && 
+            while (stack.Count != 0)
+            {
+                IToken tag = stack.Pop();
+                if (tag.TokenType == TokenType.StartTag)
+                {
+                    ((StartTag)tag).IsSelfClosingTag = true;
+                }
+            }
+            List<IToken> startTags = tokens.Where(t => t.TokenType == TokenType.StartTag &&
                 ((StartTag)t).LineType != LineType.SingleLine
             ).ToList();
             bool selfClosing = false;
-            foreach(StartTag tag in startTags)
+            foreach (StartTag tag in startTags)
             {
-                if(tag.LineType == LineType.MultiLineStart)
+                if (tag.LineType == LineType.MultiLineStart)
                 {
                     selfClosing = tag.IsSelfClosingTag;
                 }
@@ -480,11 +489,6 @@ namespace CSHTMLTokenizer
             }
             else if (IsApostrophe(ch))
             {
-                /*QuotedString quotedString = new QuotedString
-                {
-                    QuoteMark = QuoteMarkType.SingleQuote
-                };
-                GetCurrentLine().Add(quotedString);*/
                 _buferedQuoteType = QuoteMarkType.SingleQuote;
                 _machine.Fire(Trigger.BeforeQuote);
                 return;
@@ -776,12 +780,17 @@ namespace CSHTMLTokenizer
             if (IsSolidus(ch))
             {
                 _machine.Fire(Trigger.EndTagOpen);
+                return;
             }
-            else
+            if (IsWhiteSpace(ch))
             {
-                _machine.Fire(Trigger.TagName);
+                GetCurrentLine().Tokens[GetCurrentLine().Tokens.Count - 3].Append('<');
+                _machine.Fire(Trigger.Data);
                 _machine.Fire(_gotCharTrigger, ch);
+                return;
             }
+            _machine.Fire(Trigger.TagName);
+            _machine.Fire(_gotCharTrigger, ch);
         }
 
         private void OnGotCharTagName(char ch)
@@ -809,6 +818,7 @@ namespace CSHTMLTokenizer
             if (IsGreaterThanSign(ch))
             {
                 StartTag startTag = (StartTag)GetCurrentToken();
+                startTag.IsSelfClosingTag = true;
                 if (startTag.LineType == LineType.MultiLine)
                 {
                     startTag.LineType = LineType.MultiLineEnd;
