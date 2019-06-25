@@ -195,5 +195,59 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(LineType.MultiLineEnd, quotedString.LineType);
             Assert.AreEqual(QuoteMarkType.DoubleQuote, quotedString.QuoteMark);
         }
+
+        [TestMethod]
+        public void ExtraEndTag()
+        {
+            string str = @"<Container>
+    <Row>
+        <BlazorCol>.col</BlazorCol>
+    </Row>
+    <Row>
+        <BlazorCol>.col</BlazorCol>
+        <BlazorCol>.col</BlazorCol>
+        <BlazorCol>.col</BlazorCol>
+        <BlazorCol>.col</BlazorCol>
+    </Row>
+    <Row>
+        <BlazorCol XS=""3"">.col-3</BlazorCol>
+        <BlazorCol XS=""auto"">.col-auto - variable width content</BlazorCol>
+        <BlazorCol XS=""3"">.col-3</BlazorCol>
+    </Row>
+    <Row>
+        <BlazorCol XS=""6"">.col-6</BlazorCol>
+        <BlazorCol XS=""6"">.col-6</BlazorCol>
+    </Row>
+    <Row>
+        <BlazorCol XS=""6"" SM=""4"">.col-6 .col-sm-4</BlazorCol>
+        <BlazorCol XS=""6"" SM=""4"">.col-6 .col-sm-4</BlazorCol>
+        <BlazorCol SM=""4"">.col-sm-4</BlazorCol>
+    </Row>
+    <Row>
+        <BlazorCol SM=""6"" SMOrder=""2"" SMOffset=""2"">.col-sm-6 .col-sm-order-2 .offset-sm-2</BlazorCol>
+    </Row>
+    <Row>
+        <BlazorCol SM=""12"" MD=""6"" MDOffset=""3"">.col-sm-12 .col-md-6 .offset-md-3</BlazorCol>
+    </Row>
+    <Row>
+        <BlazorCol SM=""auto"" SMOffset=""1"">.col-sm .offset-sm-1</BlazorCol>
+        <BlazorCol SM=""auto"" SMOffset=""1"">.col-sm .offset-sm-1</BlazorCol>
+    </Row>
+</Container>";
+
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(35, lines.Count);
+            Assert.AreEqual(false, ((StartTag)lines[0].Tokens[0]).IsSelfClosingTag);
+        }
+
+        [TestMethod]
+        public void SelfClosingTag()
+        {
+            string str = "<div>line1<br>line2</div>";
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(1, lines.Count);
+            Assert.AreEqual(false, ((StartTag)lines[0].Tokens[0]).IsSelfClosingTag);
+            Assert.AreEqual(true, ((StartTag)lines[0].Tokens[2]).IsSelfClosingTag);
+        }
     }
 }

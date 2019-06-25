@@ -204,7 +204,7 @@ namespace CSHTMLTokenizer
                 }
 
                 //OnEntryFrom on State.Eof doesnt seem to be working therefore hacking the next line:
-                if(_machine.State == State.BeforeQuote)
+                if (_machine.State == State.BeforeQuote)
                 {
                     OnBeforeQuoteEOF();
                 }
@@ -266,10 +266,10 @@ namespace CSHTMLTokenizer
                 _emptyBuffer = true;
                 return;
             }
-            if(IsLessThanSign(ch))
+            if (IsLessThanSign(ch))
             {
                 _quoteBuffer.Append(ch);
-                var quote = _buferedQuoteType == QuoteMarkType.DoubleQuote ? '"' : '\'';
+                char quote = _buferedQuoteType == QuoteMarkType.DoubleQuote ? '"' : '\'';
                 GetCurrentToken().Append(quote);
                 _machine.Fire(Trigger.Data);
                 _emptyBuffer = true;
@@ -280,9 +280,9 @@ namespace CSHTMLTokenizer
 
         private void OnBeforeQuoteEOF()
         {
-            if(_quoteBuffer.Length > 0)
+            if (_quoteBuffer.Length > 0)
             {
-                var quote = _buferedQuoteType == QuoteMarkType.DoubleQuote ? '"' : '\'';
+                char quote = _buferedQuoteType == QuoteMarkType.DoubleQuote ? '"' : '\'';
                 GetCurrentToken().Append(quote);
                 _machine.Fire(Trigger.Data);
                 foreach (char tempCh in _quoteBuffer.ToString())
@@ -391,24 +391,58 @@ namespace CSHTMLTokenizer
                     tokens.Add(token);
                 }
             }
-            List<IToken> tags = tokens.Where(t => t.TokenType == TokenType.StartTag || t.TokenType == TokenType.EndTag).ToList();
-            for (int i = 0; i < tags.Count; i++)
+            List<IToken> tags = tokens.Where(t =>
+                t.TokenType == TokenType.EndTag ||
+                (
+                    t.TokenType == TokenType.StartTag && 
+                    !((StartTag)t).IsGeneric && 
+                    (((StartTag)t).LineType == LineType.SingleLine || ((StartTag)t).LineType == LineType.MultiLineStart)
+                )
+            ).ToList();
+            var stack = new Stack<IToken>();
+            foreach(var tag in tags)
             {
-                IToken tag = tags[i];
-                if (tag.TokenType == TokenType.StartTag &&
-                        (
-                            ((StartTag)tag).LineType == LineType.SingleLine ||
-                            ((StartTag)tag).LineType == LineType.MultiLineEnd
-                        )
-                    )
+                if(tag.TokenType == TokenType.StartTag)
                 {
-                    if (
-                        (i == tags.Count - 1 || tags[i + 1].TokenType == TokenType.StartTag) &&
-                            !((StartTag)tag).IsGeneric
-                        )
+                    stack.Push(tag);
+                }
+                if (tag.TokenType == TokenType.EndTag)
+                {
+                    var found = false;
+                    do
                     {
-                        ((StartTag)tag).IsSelfClosingTag = true;
-                    }
+                        var popped = stack.Pop();
+                        if(popped.TokenType == TokenType.StartTag)
+                        {
+                            if(((StartTag)popped).Name == ((EndTag)tag).Name)
+                            {
+                                found = true;
+                            }
+                            else
+                            {
+                                ((StartTag)popped).IsSelfClosingTag = true;
+                            }
+                        }
+                        else
+                        {
+                            throw new TokenizationException($"Found extra end tag: {((EndTag)popped).Name}");
+                        }
+                    } while (!found);
+                }
+            }
+            List<IToken> startTags = tokens.Where(t => t.TokenType == TokenType.StartTag && 
+                ((StartTag)t).LineType != LineType.SingleLine
+            ).ToList();
+            bool selfClosing = false;
+            foreach(StartTag tag in startTags)
+            {
+                if(tag.LineType == LineType.MultiLineStart)
+                {
+                    selfClosing = tag.IsSelfClosingTag;
+                }
+                else
+                {
+                    tag.IsSelfClosingTag = selfClosing;
                 }
             }
         }

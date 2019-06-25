@@ -7,9 +7,8 @@ namespace CSHTMLTokenizer
         public int LineNumber { get; set; }
         public int CharNumber { get; set; }
 
-        public TokenizationException(string message, Exception innerException) : base(message, innerException)
-        {
+        public TokenizationException(string message, Exception innerException) : base(message, innerException) { }
 
-        }
+        public TokenizationException(string message) : base(message) { }
     }
 }
