@@ -169,5 +169,33 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(LineType.MultiLineEnd, startTag.LineType);
             Assert.AreEqual(0, startTag.Attributes.Count);
         }
+
+        [TestMethod]
+        public void TestApostropheTag()
+        {
+            string str = @"<Card>
+                The card's content.
+            </Card>";
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(3, lines.Count);
+
+            Assert.AreEqual(TokenType.Text, lines[1].Tokens[0].TokenType);
+            Assert.AreEqual("The card'", ((Text)lines[1].Tokens[0]).Content.Trim());
+            Assert.AreEqual(TokenType.Text, lines[1].Tokens[1].TokenType);
+            Assert.AreEqual("s content.", ((Text)lines[1].Tokens[1]).Content.Trim());
+
+        }
+
+        [TestMethod]
+        public void TestApostropheEOF()
+        {
+            string str = "The card's content.";
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(1, lines.Count);
+            Assert.AreEqual(TokenType.Text, lines[0].Tokens[0].TokenType);
+            Assert.AreEqual("The card'", ((Text)lines[0].Tokens[0]).Content);
+            Assert.AreEqual(TokenType.Text, lines[0].Tokens[1].TokenType);
+            Assert.AreEqual("s content.", ((Text)lines[0].Tokens[1]).Content);
+        }
     }
 }

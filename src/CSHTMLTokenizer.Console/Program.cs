@@ -8,15 +8,15 @@ namespace CSHTMLTokenizer.Console
     {
         private static void Main(string[] args)
         {
-            string str = @"@page '/'
-
-@foreach(var item in list) {
-    <h1>@item</h1>
-}
-
-@functions {
-    var list = new List<String> { 'hello', 'world' };
-}";
+            string str = @"<Card CardType=""CardType.Card"">
+    <Card CardType=""CardType.Image"" VerticalAlignment=""VerticalAlignment.Top"" src=""...286x180"" alt=""Card image cap"" />
+    <Card CardType=""CardType.Body"">
+        <Card CardType=""CardType.Title"">Card title</Card>
+        <Card CardType=""CardType.Subtitle"">Card subtitle</Card>
+        <Card CardType=""CardType.Text"">Some quick example text to build on the card title and make up the bulk of the card's content.</Card>
+        <BlazorButton>Button</BlazorButton>
+    </Card>
+</Card>";
             List<Line> lines = Tokenizer.Parse(str);
             System.Console.WriteLine(Print(lines));
 

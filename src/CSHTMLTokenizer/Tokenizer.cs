@@ -1,5 +1,6 @@
 ﻿using CSHTMLTokenizer.Tokens;
 using Stateless;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -12,20 +13,23 @@ namespace CSHTMLTokenizer
         {
             Start, Data, TagOpen, EOF, TagName, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
             AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS,
-            EndOfLine, BeforeAttributeNameEndOfLine, BeforeAttributeNameWhiteSpace, BeforeQuotedStringEndOfLine
+            EndOfLine, BeforeAttributeNameEndOfLine, BeforeAttributeNameWhiteSpace, BeforeQuotedStringEndOfLine, BeforeQuote
         }
 
         private enum Trigger
         {
             GotChar, EOF, OpenTag, TagName, Data, SelfClosingStartTag, EndTagOpen, BeforeAttributeName, AttributeName,
             AfterAttributeName, BeforeAttributeValue, AttributeValue, AfterAttributeValue, Quote, CSBlock, CSLine, BeforeCS,
-            EndOfLine, BeforeAttributeNameWhiteSpace, BeforeQuotedStringEndOfLine, MultiLineQuote
+            EndOfLine, BeforeAttributeNameWhiteSpace, BeforeQuotedStringEndOfLine, MultiLineQuote, BeforeQuote
         }
 
         private readonly StateMachine<State, Trigger> _machine = new StateMachine<State, Trigger>(State.Start);
         private readonly StateMachine<State, Trigger>.TriggerWithParameters<char> _gotCharTrigger;
 
         private readonly StringBuilder _buffer = new StringBuilder();
+        private readonly StringBuilder _quoteBuffer = new StringBuilder();
+        private QuoteMarkType _buferedQuoteType = QuoteMarkType.Unquoted;
+        private bool _emptyBuffer = false;
         private int _parens = 0;
         private int _braces = 0;
         private bool _inFunctions = false;
@@ -44,7 +48,7 @@ namespace CSHTMLTokenizer
                 .OnEntryFrom(Trigger.Data, OnDataEntry)
                 .PermitReentry(Trigger.GotChar)
                 .PermitReentry(Trigger.Data)
-                .Permit(Trigger.Quote, State.Quote)
+                .Permit(Trigger.BeforeQuote, State.BeforeQuote)
                 .Permit(Trigger.BeforeCS, State.BeforeCS)
                 .Permit(Trigger.OpenTag, State.TagOpen)
                 .Permit(Trigger.EndOfLine, State.EndOfLine)
@@ -136,12 +140,21 @@ namespace CSHTMLTokenizer
                .Permit(Trigger.EOF, State.EOF)
                .Permit(Trigger.MultiLineQuote, State.Quote);
 
+            _machine.Configure(State.BeforeQuote)
+                .OnEntryFrom(_gotCharTrigger, OnGotCharBeforeQuote)
+                .OnEntryFrom(Trigger.Data, OnBeforeQuoteEntry)
+                .PermitReentry(Trigger.GotChar)
+                .Permit(Trigger.Quote, State.Quote)
+                .Permit(Trigger.EOF, State.EOF)
+                .Permit(Trigger.Data, State.Data);
+
             _machine.Configure(State.Quote)
                 .OnEntryFrom(_gotCharTrigger, OnGotCharQuote)
                 .OnEntryFrom(Trigger.MultiLineQuote, OnEntryMultiLineQuote)
                 .PermitReentry(Trigger.GotChar)
                 .Permit(Trigger.Data, State.Data)
-                .Permit(Trigger.EndOfLine, State.BeforeQuotedStringEndOfLine);
+                .Permit(Trigger.EndOfLine, State.BeforeQuotedStringEndOfLine)
+                .Permit(Trigger.EOF, State.EOF);
 
             _machine.Configure(State.BeforeQuotedStringEndOfLine)
                 .OnEntryFrom(Trigger.EndOfLine, OnBeforeQuotedStringEndOfLine)
@@ -158,6 +171,125 @@ namespace CSHTMLTokenizer
                 .OnEntry(OnEndOfLine)
                 .Permit(Trigger.Data, State.Data);
 
+            _machine.Configure(State.EOF)
+                .OnEntryFrom(Trigger.BeforeQuote, OnBeforeQuoteEOF)
+                .Permit(Trigger.Data, State.Data);
+
+        }
+
+        public static List<Line> Parse(string str)
+        {
+            Tokenizer tokenizer = new Tokenizer();
+            return tokenizer.ParseRazor(str);
+        }
+
+        private List<Line> ParseRazor(string str)
+        {
+            try
+            {
+                Lines = new List<Line>() { new Line() };
+                _machine.Fire(Trigger.Data);
+                foreach (char ch in str)
+                {
+                    _machine.Fire(_gotCharTrigger, ch);
+                    if (_emptyBuffer)
+                    {
+                        foreach (char tempCh in _quoteBuffer.ToString())
+                        {
+                            _machine.Fire(_gotCharTrigger, tempCh);
+                        }
+                        _emptyBuffer = false;
+                        _quoteBuffer.Clear();
+                    }
+                }
+
+                //OnEntryFrom on State.Eof doesnt seem to be working therefore hacking the next line:
+                if(_machine.State == State.BeforeQuote)
+                {
+                    OnBeforeQuoteEOF();
+                }
+
+                _machine.Fire(Trigger.EOF);
+                RemoveAllEmpty();
+                FixEmptyAttributes();
+                FixSelfClosingTags();
+                FixLastLine();
+                return Lines;
+            }
+            catch (Exception ex)
+            {
+                int charNum = GetCurrentLine().ToHtml().Length;
+                TokenizationException exception = new TokenizationException($"Tokenization Error on line: {Lines.Count} char: {charNum}", ex)
+                {
+                    LineNumber = Lines.Count,
+                    CharNumber = charNum
+                };
+                throw exception;
+            }
+        }
+        private void OnExitQuote()
+        {
+            _buferedQuoteType = QuoteMarkType.Unquoted;
+            _quoteBuffer.Clear();
+        }
+
+        private void OnBeforeQuoteEntry()
+        {
+            _quoteBuffer.Clear();
+        }
+
+        private void OnGotCharBeforeQuote(char ch)
+        {
+            if (IsQuotationMark(ch) && _buferedQuoteType == QuoteMarkType.DoubleQuote)
+            {
+                _quoteBuffer.Append(ch);
+                QuotedString quotedString = new QuotedString
+                {
+                    QuoteMark = QuoteMarkType.DoubleQuote
+                };
+                GetCurrentLine().Add(quotedString);
+
+                _machine.Fire(Trigger.Quote);
+                _emptyBuffer = true;
+                return;
+            }
+            if (IsApostrophe(ch) && _buferedQuoteType == QuoteMarkType.SingleQuote)
+            {
+                _quoteBuffer.Append(ch);
+                QuotedString quotedString = new QuotedString
+                {
+                    QuoteMark = QuoteMarkType.SingleQuote
+                };
+                GetCurrentLine().Add(quotedString);
+
+                _machine.Fire(Trigger.Quote);
+                _emptyBuffer = true;
+                return;
+            }
+            if(IsLessThanSign(ch))
+            {
+                _quoteBuffer.Append(ch);
+                var quote = _buferedQuoteType == QuoteMarkType.DoubleQuote ? '"' : '\'';
+                GetCurrentToken().Append(quote);
+                _machine.Fire(Trigger.Data);
+                _emptyBuffer = true;
+                return;
+            }
+            _quoteBuffer.Append(ch);
+        }
+
+        private void OnBeforeQuoteEOF()
+        {
+            if(_quoteBuffer.Length > 0)
+            {
+                var quote = _buferedQuoteType == QuoteMarkType.DoubleQuote ? '"' : '\'';
+                GetCurrentToken().Append(quote);
+                _machine.Fire(Trigger.Data);
+                foreach (char tempCh in _quoteBuffer.ToString())
+                {
+                    _machine.Fire(_gotCharTrigger, tempCh);
+                }
+            }
         }
 
         private void OnGotCharBeforeAttributeNameWhiteSpace(char ch)
@@ -177,29 +309,6 @@ namespace CSHTMLTokenizer
         private void OnBeforeAttributeNameWhiteSpace()
         {
             ((StartTag)GetCurrentToken()).Attributes.Add(new Text());
-        }
-
-        public static List<Line> Parse(string str)
-        {
-            Tokenizer tokenizer = new Tokenizer();
-            return tokenizer.ParseHtml(str);
-        }
-
-        protected List<Line> ParseHtml(string str)
-        {
-            Lines = new List<Line>() { new Line() };
-            _machine.Fire(Trigger.Data);
-            foreach (char ch in str)
-            {
-                _machine.Fire(_gotCharTrigger, ch);
-            }
-
-            _machine.Fire(Trigger.EOF);
-            RemoveAllEmpty();
-            FixEmptyAttributes();
-            FixSelfClosingTags();
-            FixLastLine();
-            return Lines;
         }
 
         private void RemoveAllEmpty()
@@ -331,22 +440,19 @@ namespace CSHTMLTokenizer
             }
             else if (IsQuotationMark(ch))
             {
-                QuotedString quotedString = new QuotedString
-                {
-                    QuoteMark = QuoteMarkType.DoubleQuote
-                };
-                GetCurrentLine().Add(quotedString);
-                _machine.Fire(Trigger.Quote);
+                _buferedQuoteType = QuoteMarkType.DoubleQuote;
+                _machine.Fire(Trigger.BeforeQuote);
                 return;
             }
             else if (IsApostrophe(ch))
             {
-                QuotedString quotedString = new QuotedString
+                /*QuotedString quotedString = new QuotedString
                 {
                     QuoteMark = QuoteMarkType.SingleQuote
                 };
-                GetCurrentLine().Add(quotedString);
-                _machine.Fire(Trigger.Quote);
+                GetCurrentLine().Add(quotedString);*/
+                _buferedQuoteType = QuoteMarkType.SingleQuote;
+                _machine.Fire(Trigger.BeforeQuote);
                 return;
             }
             else if (IsAtSign(ch))
