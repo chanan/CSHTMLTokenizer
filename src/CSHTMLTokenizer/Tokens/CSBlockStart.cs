@@ -11,6 +11,7 @@ namespace CSHTMLTokenizer.Tokens
         public bool IsCode { get; set; }
         public bool IsOpenBrace { get; set; }
         public Guid Id { get; } = Guid.NewGuid();
+        public bool IsFor { get; internal set; }
 
         public void Append(char ch)
         {

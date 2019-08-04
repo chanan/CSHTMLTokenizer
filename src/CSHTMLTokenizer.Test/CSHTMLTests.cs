@@ -95,7 +95,7 @@ namespace CSHTMLTokenizer.Test
 
             Assert.AreEqual(TokenType.EndTag, lines[3].Tokens[4].TokenType);
 
-            Assert.AreEqual(TokenType.CSBlockEnd, lines[4].Tokens[0].TokenType);
+            Assert.AreEqual(TokenType.Text, lines[4].Tokens[0].TokenType);
 
             Assert.AreEqual(TokenType.CSBlockStart, lines[6].Tokens[0].TokenType);
             Assert.AreEqual(true, ((CSBlockStart)lines[6].Tokens[0]).IsFunctions);
@@ -264,6 +264,22 @@ namespace CSHTMLTokenizer.Test
     </div>";
             List<Line> lines = Tokenizer.Parse(str);
             Assert.AreEqual(9, lines.Count);
+        }
+
+        [TestMethod]
+        public void TestBraces()
+        {
+            string str = @"<Styled @bind-Classname=""@hover"">
+    &:hover {
+        color: @color;
+    }
+</Styled>";
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(5, lines.Count);
+            Assert.AreEqual(TokenType.Text, lines[1].Tokens[0].TokenType);
+            Assert.AreEqual("&:hover {", ((Text)lines[1].Tokens[0]).Content.Trim());
+            Assert.AreEqual(TokenType.Text, lines[3].Tokens[0].TokenType);
+            Assert.AreEqual("}", ((Text)lines[3].Tokens[0]).Content.Trim());
         }
     }
 }

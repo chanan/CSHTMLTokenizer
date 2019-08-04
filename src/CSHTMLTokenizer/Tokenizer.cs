@@ -30,9 +30,11 @@ namespace CSHTMLTokenizer
         private readonly StringBuilder _quoteBuffer = new StringBuilder();
         private QuoteMarkType _buferedQuoteType = QuoteMarkType.Unquoted;
         private bool _emptyBuffer = false;
+        private bool _emptyBufferCS = false;
         private int _parens = 0;
         private int _braces = 0;
         private bool _inFunctions = false;
+        private bool _isForeach;
 
         public List<Line> Lines { get; set; } = new List<Line>();
 
@@ -202,6 +204,15 @@ namespace CSHTMLTokenizer
                         _emptyBuffer = false;
                         _quoteBuffer.Clear();
                     }
+                    if (_emptyBufferCS)
+                    {
+                        foreach (char tempCh in _buffer.ToString())
+                        {
+                            _machine.Fire(_gotCharTrigger, tempCh);
+                        }
+                        _emptyBufferCS = false;
+                        _buffer.Clear();
+                    }
                 }
 
                 //OnEntryFrom on State.Eof doesnt seem to be working therefore hacking the next line:
@@ -290,6 +301,7 @@ namespace CSHTMLTokenizer
                 {
                     _machine.Fire(_gotCharTrigger, tempCh);
                 }
+                _quoteBuffer.Clear();
             }
         }
 
@@ -384,14 +396,9 @@ namespace CSHTMLTokenizer
         //so <br /> becomes <br> in the browser DOM 
         private void FixSelfClosingTags()
         {
-            List<IToken> tokens = new List<IToken>();
-            foreach (Line line in Lines.Where(token => token.TokenType == TokenType.Line))
-            {
-                foreach (IToken token in line.Tokens)
-                {
-                    tokens.Add(token);
-                }
-            }
+            List<IToken> tokens = (from Line line in Lines.Where(token => token.TokenType == TokenType.Line)
+                                   from IToken token in line.Tokens
+                                   select token).ToList();
             List<IToken> tags = tokens.Where(t =>
                 t.TokenType == TokenType.EndTag ||
                 (
@@ -421,7 +428,7 @@ namespace CSHTMLTokenizer
                             }
                             else
                             {
-                                ((StartTag)popped).IsSelfClosingTag = true;
+                                ((StartTag)popped).IsSelfClosingTag = ShouldSelfClose(((StartTag)popped).Name);
                             }
                         }
                         else
@@ -436,7 +443,7 @@ namespace CSHTMLTokenizer
                 IToken tag = stack.Pop();
                 if (tag.TokenType == TokenType.StartTag)
                 {
-                    ((StartTag)tag).IsSelfClosingTag = true;
+                    ((StartTag)tag).IsSelfClosingTag = ((StartTag)tag).IsSelfClosingTag || ShouldSelfClose(((StartTag)tag).Name);
                 }
             }
             List<IToken> startTags = tokens.Where(t => t.TokenType == TokenType.StartTag &&
@@ -454,6 +461,11 @@ namespace CSHTMLTokenizer
                     tag.IsSelfClosingTag = selfClosing;
                 }
             }
+        }
+
+        private bool ShouldSelfClose(string element)
+        {
+            return _elements.Contains(element);
         }
 
         private List<IToken> RemoveEmpty(List<IToken> tokens)
@@ -514,9 +526,19 @@ namespace CSHTMLTokenizer
 
                 if (_braces == 0)
                 {
-                    GetCurrentLine().Add(new CSBlockEnd());
-                    _inFunctions = false;
-                    _machine.Fire(Trigger.Data);
+                    if (_inFunctions || _isForeach)
+                    {
+                        GetCurrentLine().Add(new CSBlockEnd());
+                        _inFunctions = false;
+                        _isForeach = false;
+                        _machine.Fire(Trigger.Data);
+                    }
+                    else
+                    {
+                        _inFunctions = false;
+                        _isForeach = false;
+                        GetCurrentToken().Append(ch);
+                    }
                     return;
                 }
                 GetCurrentToken().Append(ch);
@@ -555,7 +577,7 @@ namespace CSHTMLTokenizer
                     {
                         IsFunctions = true,
                         IsOpenBrace = true,
-                        IsCode = _buffer.ToString().StartsWith("code")
+                        IsCode = _buffer.ToString().StartsWith("code"),
                     };
                     GetCurrentLine().Add(token);
                     _braces++;
@@ -568,8 +590,10 @@ namespace CSHTMLTokenizer
                     CSBlockStart token = new CSBlockStart
                     {
                         IsFunctions = false,
-                        IsOpenBrace = _buffer.ToString().StartsWith("@ {")
+                        IsOpenBrace = _buffer.ToString().StartsWith("@ {"),
+                        IsFor = _buffer.ToString().TrimStart().StartsWith("for")
                     };
+                    _isForeach = token.IsFor;
                     GetCurrentLine().Add(token);
                     _machine.Fire(Trigger.Data);
                     foreach (char tempCh in _buffer.ToString())
@@ -584,15 +608,13 @@ namespace CSHTMLTokenizer
                 CSBlockStart token = new CSBlockStart
                 {
                     IsFunctions = false,
-                    IsOpenBrace = false
+                    IsOpenBrace = false,
+                    IsFor = _buffer.ToString().TrimStart().StartsWith("for")
                 };
+                _isForeach = token.IsFor;
                 GetCurrentLine().Add(token);
                 _machine.Fire(Trigger.Data);
-                foreach (char tempCh in _buffer.ToString())
-                {
-                    _machine.Fire(_gotCharTrigger, tempCh);
-                }
-                _machine.Fire(_gotCharTrigger, ch);
+                _emptyBufferCS = true;
                 return;
             }
             if (IsQuotationMark(ch))
@@ -784,7 +806,7 @@ namespace CSHTMLTokenizer
             }
             if (IsWhiteSpace(ch))
             {
-                GetCurrentLine().Tokens[GetCurrentLine().Tokens.Count - 3].Append('<');
+                GetCurrentLine().Tokens[GetCurrentLine().Tokens.Count - 1].Append('<');
                 _machine.Fire(Trigger.Data);
                 _machine.Fire(_gotCharTrigger, ch);
                 return;
@@ -1118,5 +1140,119 @@ namespace CSHTMLTokenizer
             }
             return sb.ToString();
         }
+
+        private readonly List<string> _elements = new List<string>
+        {
+            "a",
+            "abbr",
+            "address",
+            "area",
+            "article",
+            "aside",
+            "audio",
+            "b",
+            "base",
+            "bdi",
+            "bdo",
+            "blockquote",
+            "body",
+            "br",
+            "button",
+            "canvas",
+            "caption",
+            "cite",
+            "code",
+            "col",
+            "colgroup",
+            "data",
+            "datalist",
+            "dd",
+            "del",
+            "details",
+            "dfn",
+            "dialog",
+            "div",
+            "dl",
+            "dt",
+            "em",
+            "embed",
+            "fieldset",
+            "figcaption",
+            "figure",
+            "footer",
+            "form",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "head",
+            "header",
+            "hr",
+            "html",
+            "i",
+            "iframe",
+            "img",
+            "input",
+            "ins",
+            "kbd",
+            "label",
+            "legend",
+            "li",
+            "link",
+            "main",
+            "map",
+            "mark",
+            "meta",
+            "meter",
+            "nav",
+            "noscript",
+            "object",
+            "ol",
+            "optgroup",
+            "option",
+            "output",
+            "p",
+            "param",
+            "picture",
+            "pre",
+            "progress",
+            "q",
+            "rp",
+            "rt",
+            "ruby",
+            "s",
+            "samp",
+            "script",
+            "section",
+            "select",
+            "small",
+            "source",
+            "span",
+            "strong",
+            "style",
+            "sub",
+            "summary",
+            "sup",
+            "svg",
+            "table",
+            "tbody",
+            "td",
+            "template",
+            "textarea",
+            "tfoot",
+            "th",
+            "thead",
+            "time",
+            "title",
+            "tr",
+            "track",
+            "u",
+            "ul",
+            "var",
+            "video",
+            "wbr"
+        };
     }
 }
