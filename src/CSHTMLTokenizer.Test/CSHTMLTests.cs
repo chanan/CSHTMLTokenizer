@@ -281,5 +281,32 @@ namespace CSHTMLTokenizer.Test
             Assert.AreEqual(TokenType.Text, lines[3].Tokens[0].TokenType);
             Assert.AreEqual("}", ((Text)lines[3].Tokens[0]).Content.Trim());
         }
+
+        [TestMethod]
+        public void TestBlazotStrap()
+        {
+            string str = @"@@inherits LayoutComponentBase
+@@inject IBootstrapCSS BootstrapCSS
+
+<div class=""sidebar"" style=""overflow-y: auto"">
+      <NavMenu />
+  </div>
+  
+  <div class=""main container"">
+    <div class=""content px-4"">
+        @@Body
+    </div>
+</div>
+
+@@code {
+    protected override async Task OnInitAsync()
+        {
+            await BootstrapCSS.SetBootstrapCSS(""4.3.1"");
+        }
+    }";
+
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(19, lines.Count);
+        }
     }
 }

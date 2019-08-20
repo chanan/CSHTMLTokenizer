@@ -226,6 +226,7 @@ namespace CSHTMLTokenizer
                 FixEmptyAttributes();
                 FixSelfClosingTags();
                 FixLastLine();
+                ParseCSS();
                 return Lines;
             }
             catch (Exception ex)
@@ -239,6 +240,156 @@ namespace CSHTMLTokenizer
                 throw exception;
             }
         }
+
+        private void ParseCSS()
+        {
+            int openClasses = 0;
+            foreach (Line line in Lines)
+            {
+                int foundColonIndex = -1;
+                int foundColonToken = -1;
+                int tokenNum = 0;
+                foreach (IToken token in line.Tokens)
+                {
+                    if (token.TokenType == TokenType.Text)
+                    {
+                        Text text = (Text)token;
+                        if (text.Content.IndexOf("{") != -1)
+                        {
+                            openClasses++;
+                            line.Tokens = ParseOpenClass(line);
+                        }
+                        if (text.Content.IndexOf("}") != -1 && openClasses > 0)
+                        {
+                            openClasses--;
+                            line.Tokens = ParseCloseClass(line);
+                        }
+                        if (text.Content.IndexOf(':') != -1 && foundColonIndex == -1)
+                        {
+                            foundColonIndex = text.Content.IndexOf(':');
+                            foundColonToken = tokenNum;
+                        }
+                        if (text.Content.IndexOf(';') != -1 && foundColonIndex != -1 && (foundColonToken == tokenNum && foundColonIndex < text.Content.IndexOf(';') || foundColonToken != tokenNum))
+                        {
+                            line.Tokens = ParseDecleration(line);
+                        }
+                    }
+                    tokenNum++;
+                }
+            }
+        }
+
+        private List<IToken> ParseCloseClass(Line line)
+        {
+            List<IToken> list = new List<IToken>();
+            bool found = false;
+            foreach (IToken token in line.Tokens)
+            {
+                if (token.TokenType == TokenType.Text && !found && ((Text)token).Content.IndexOf("}") != -1)
+                {
+                    found = true;
+                    Text text = (Text)token;
+                    int location = text.Content.IndexOf("}");
+                    if (location != 0)
+                    {
+                        Text textToken = new Text(text.Content.Substring(0, location));
+                        list.Add(textToken);
+                    }
+                    list.Add(new CSSCloseClass());
+                    if (location < text.Content.Length)
+                    {
+                        string rest = text.Content.Substring(text.Content.IndexOf("}") + 1);
+                        Text textToken = new Text(rest);
+                        list.Add(textToken);
+                    }
+                }
+                else
+                {
+                    list.Add(token);
+                }
+            }
+            return list;
+        }
+
+        private List<IToken> ParseOpenClass(Line line)
+        {
+            List<IToken> list = new List<IToken>();
+            bool found = false;
+            foreach (IToken token in line.Tokens)
+            {
+                if (token.TokenType == TokenType.Text && !found && ((Text)token).Content.IndexOf("{") != -1)
+                {
+                    found = true;
+                    Text text = (Text)token;
+                    CSSOpenClass cssOpenClass = new CSSOpenClass(text.Content.Substring(0, text.Content.IndexOf("{")));
+                    list.Add(cssOpenClass);
+                    if (text.Content.IndexOf("{") < text.Content.Length)
+                    {
+                        string rest = text.Content.Substring(text.Content.IndexOf("{") + 1);
+                        Text textToken = new Text(rest);
+                        list.Add(textToken);
+                    }
+                }
+                else
+                {
+                    list.Add(token);
+                }
+            }
+            return list;
+        }
+
+        private List<IToken> ParseDecleration(Line line)
+        {
+            List<IToken> list = new List<IToken>();
+            CSSValue cssValue = new CSSValue();
+            bool inValue = false;
+            foreach (IToken token in line.Tokens)
+            {
+                if (token.TokenType == TokenType.Text)
+                {
+                    Text text = (Text)token;
+                    if (text.Content.IndexOf(':') != -1 && !inValue)
+                    {
+                        int foundColonIndex = text.Content.IndexOf(':');
+                        string property = text.Content.Substring(0, foundColonIndex);
+                        CSSProperty cssProperty = new CSSProperty(property);
+                        list.Add(cssProperty);
+                        list.Add(cssValue);
+                        inValue = true;
+                        if (foundColonIndex < text.Content.Length)
+                        {
+                            string rest = text.Content.Substring(foundColonIndex + 1);
+                            Text textProp = new Text(rest);
+                            cssValue.Add(textProp);
+                        }
+                    }
+                    else
+                    {
+                        if (inValue && token.TokenType != TokenType.CSSCloseClass)
+                        {
+                            cssValue.Add(token);
+                        }
+                        else
+                        {
+                            list.Add(token);
+                        }
+                    }
+                }
+                else
+                {
+                    if (inValue && token.TokenType != TokenType.CSSCloseClass)
+                    {
+                        cssValue.Add(token);
+                    }
+                    else
+                    {
+                        list.Add(token);
+                    }
+                }
+            }
+            return list;
+        }
+
         private void OnExitQuote()
         {
             _buferedQuoteType = QuoteMarkType.Unquoted;

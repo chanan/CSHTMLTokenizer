@@ -8,51 +8,22 @@ namespace CSHTMLTokenizer.Console
     {
         private static void Main(string[] args)
         {
-            string str = @"<Styled @bind-Classname=""@hover"">
-    &:hover {
-        color: @color;
+            string str = @"color: red;
+font-family: ""open sans"", serif;
+
+h1 {
+    color: pink;
+}
+
+h2 { color: blue; }
+
+@media only screen and (min-width: 320px) and (max-width: 480px) {
+    h1 {
+        color: green;
     }
-</Styled>";
+}";
+
             List<Line> lines = Tokenizer.Parse(str);
-            System.Console.WriteLine(Print(lines));
-
-            System.Console.WriteLine();
-            System.Console.WriteLine("------------------------------------------------------");
-            System.Console.WriteLine();
-
-            str = @"<div
-    class='test'
->Test?</div>";
-
-            lines = Tokenizer.Parse(str);
-            System.Console.WriteLine(Print(lines));
-
-            System.Console.WriteLine();
-            System.Console.WriteLine("------------------------------------------------------");
-            System.Console.WriteLine();
-
-            str = @"<div class=""@hover"">
-    Hover to change color.
-</div>
-
-@code {
-    private string color = ""white"";
-
-        protected override async Task OnInitAsync()
-        {
-            hover = await Styled.Css($@""
-            padding: 32px;
-            background-color: hotpink;
-            font-size: 24px;
-            border-radius: 4px;
-            &:hover {{
-                color: {color};
-            }}
-        "");
-        }
-    }";
-
-            lines = Tokenizer.Parse(str);
             System.Console.WriteLine(Print(lines));
         }
 

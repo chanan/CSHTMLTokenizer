@@ -3,15 +3,21 @@ using System.Text;
 
 namespace CSHTMLTokenizer.Tokens
 {
-    public class Text : IToken
+    public class CSSOpenClass : IToken
     {
-        public Text() { }
-        public Text(string text)
+        public CSSOpenClass()
         {
-            _content.Append(text);
+
         }
+
+        public CSSOpenClass(string cssOpenClass)
+        {
+            _content.Append(cssOpenClass);
+        }
+
         public string Content => _content.ToString();
-        public TokenType TokenType => TokenType.Text;
+        public TokenType TokenType => TokenType.CSSOpenClass;
+
         public bool IsEmpty => _content.Length == 0;
         private readonly StringBuilder _content = new StringBuilder();
         public Guid Id { get; } = Guid.NewGuid();
@@ -23,7 +29,7 @@ namespace CSHTMLTokenizer.Tokens
 
         public string ToHtml()
         {
-            return _content.ToString();
+            return _content.ToString() + " {";
         }
     }
 }

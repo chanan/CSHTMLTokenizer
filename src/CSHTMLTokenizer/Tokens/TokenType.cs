@@ -13,6 +13,10 @@
         CSBlockStart,
         CSBlockEnd,
         CSLine,
-        Line
+        Line,
+        CSSProperty,
+        CSSValue,
+        CSSOpenClass,
+        CSSCloseClass
     }
 }
