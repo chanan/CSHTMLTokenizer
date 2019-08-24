@@ -49,7 +49,11 @@ namespace CSHTMLTokenizer.Tokens
                 default:
                     return "";
             }
+        }
 
+        public override string ToString()
+        {
+            return ToHtml();
         }
     }
 }

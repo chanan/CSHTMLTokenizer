@@ -56,5 +56,48 @@ h2 { color: blue; }
             Assert.AreEqual(TokenType.CSSCloseClass, lines[7].Tokens[3].TokenType);
 
         }
+
+        [TestMethod]
+        public void EnsureNoCSStartBlock()
+        {
+            string str = @"@media only screen and (min-width: 320px) and (max-width: 480px) {
+    color: green;
+}";
+
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(3, lines.Count);
+            Assert.AreEqual(2, lines[0].Tokens.Count);
+            Assert.AreEqual(TokenType.CSSOpenClass, lines[0].Tokens[0].TokenType);
+            Assert.IsTrue(((CSSOpenClass)lines[0].Tokens[0]).Content.Trim().StartsWith("@"));
+        }
+
+        [TestMethod]
+        public void TestCSSClass()
+        {
+            string str = @"<Styled @bind-Classname=""@hover"">
+    &:hover {
+        color: @color;
+    }
+</Styled>";
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(5, lines.Count);
+            Assert.AreEqual(TokenType.CSSOpenClass, lines[1].Tokens[0].TokenType);
+            Assert.AreEqual("&:hover", ((CSSOpenClass)lines[1].Tokens[0]).Content.Trim());
+            Assert.AreEqual(TokenType.CSSCloseClass, lines[3].Tokens[1].TokenType);
+        }
+
+        [TestMethod]
+        public void EnsureNoCSSCloseTag()
+        {
+            string str = @"@code {
+    private void onclick()
+	{
+        _showBig = !_showBig;
+    }
+}";
+            List<Line> lines = Tokenizer.Parse(str);
+            Assert.AreEqual(6, lines.Count);
+            Assert.AreEqual(TokenType.CSBlockEnd, lines[5].Tokens[0].TokenType);
+        }
     }
 }

@@ -243,7 +243,69 @@ namespace CSHTMLTokenizer
 
         private void ParseCSS()
         {
+            //CssOpenClass
+            bool inCodeBlock = false;
+            foreach (Line line in Lines)
+            {
+                foreach (IToken token in line.Tokens)
+                {
+                    if(token.TokenType == TokenType.CSBlockStart)
+                    {
+                        CSBlockStart cs = (CSBlockStart)token;
+                        if (cs.IsCode || cs.IsFunctions || cs.IsOpenBrace)
+                        {
+                            inCodeBlock = true;
+                        }
+                    }
+                    if (token.TokenType == TokenType.CSBlockEnd)
+                    {
+                        inCodeBlock = false;
+                    }
+                    if (token.TokenType == TokenType.Text && !inCodeBlock)
+                    {
+                        Text text = (Text)token;
+                        if (text.Content.IndexOf("{") != -1)
+                        {
+                            line.Tokens = ParseOpenClass(line);
+                        }
+                    }
+                }
+            }
+            //CssCloseClass
+            inCodeBlock = false;
             int openClasses = 0;
+            foreach (Line line in Lines)
+            {
+                foreach (IToken token in line.Tokens)
+                {
+                    if (token.TokenType == TokenType.CSBlockStart)
+                    {
+                        CSBlockStart cs = (CSBlockStart)token;
+                        if(cs.IsCode || cs.IsFunctions || cs.IsOpenBrace)
+                        {
+                            inCodeBlock = true;
+                        }
+                    }
+                    if (token.TokenType == TokenType.CSBlockEnd)
+                    {
+                        inCodeBlock = false;
+                    }
+                    if (token.TokenType == TokenType.CSSOpenClass && !inCodeBlock)
+                    {
+                        openClasses++;
+                    }
+                    if (token.TokenType == TokenType.Text && !inCodeBlock)
+                    {
+                        Text text = (Text)token;
+                        if (text.Content.IndexOf("}") != -1 && openClasses > 0)
+                        {
+                            openClasses--;
+                            line.Tokens = ParseCloseClass(line);
+                        }
+                    }
+                }
+            }
+            //Css Declerations
             foreach (Line line in Lines)
             {
                 int foundColonIndex = -1;
@@ -254,16 +316,6 @@ namespace CSHTMLTokenizer
                     if (token.TokenType == TokenType.Text)
                     {
                         Text text = (Text)token;
-                        if (text.Content.IndexOf("{") != -1)
-                        {
-                            openClasses++;
-                            line.Tokens = ParseOpenClass(line);
-                        }
-                        if (text.Content.IndexOf("}") != -1 && openClasses > 0)
-                        {
-                            openClasses--;
-                            line.Tokens = ParseCloseClass(line);
-                        }
                         if (text.Content.IndexOf(':') != -1 && foundColonIndex == -1)
                         {
                             foundColonIndex = text.Content.IndexOf(':');
@@ -315,24 +367,54 @@ namespace CSHTMLTokenizer
         {
             List<IToken> list = new List<IToken>();
             bool found = false;
-            foreach (IToken token in line.Tokens)
+            bool previousCS = false;
+            bool doesNotContainCS = line.Tokens.Where(t => t.TokenType == TokenType.CSBlockStart).Count() == 0;
+            for (int i = 0; i < line.Tokens.Count; i++)
             {
+                IToken token = line.Tokens[i];
                 if (token.TokenType == TokenType.Text && !found && ((Text)token).Content.IndexOf("{") != -1)
                 {
-                    found = true;
-                    Text text = (Text)token;
-                    CSSOpenClass cssOpenClass = new CSSOpenClass(text.Content.Substring(0, text.Content.IndexOf("{")));
-                    list.Add(cssOpenClass);
-                    if (text.Content.IndexOf("{") < text.Content.Length)
+                    if (doesNotContainCS || (previousCS && ((Text)token).Content.Trim().StartsWith("media") ||
+                            ((Text)token).Content.Trim().StartsWith("font") ||
+                            ((Text)token).Content.Trim().StartsWith("keyframe")))
                     {
-                        string rest = text.Content.Substring(text.Content.IndexOf("{") + 1);
-                        Text textToken = new Text(rest);
-                        list.Add(textToken);
+                        found = true;
+                        Text text = (Text)token;
+                        string prefix = previousCS ? "@" : string.Empty;
+                        previousCS = false;
+                        CSSOpenClass cssOpenClass = new CSSOpenClass(prefix + text.Content.Substring(0, text.Content.IndexOf("{")));
+                        list.Add(cssOpenClass);
+                        if (text.Content.IndexOf("{") < text.Content.Length)
+                        {
+                            string rest = text.Content.Substring(text.Content.IndexOf("{") + 1);
+                            Text textToken = new Text(rest);
+                            list.Add(textToken);
+                        }
+                    }
+                    else
+                    {
+                        list.Add(token);
+                        previousCS = false;
                     }
                 }
                 else
                 {
-                    list.Add(token);
+                    if (token.TokenType == TokenType.CSBlockStart &&
+                        i != line.Tokens.Count - 1 &&
+                        line.Tokens[i + 1].TokenType == TokenType.Text &&
+                        (
+                            ((Text)line.Tokens[i + 1]).Content.Trim().StartsWith("media") ||
+                            ((Text)line.Tokens[i + 1]).Content.Trim().StartsWith("font") ||
+                            ((Text)line.Tokens[i + 1]).Content.Trim().StartsWith("keyframe")
+                        )
+                    )
+                    {
+                        previousCS = true;
+                    }
+                    else
+                    {
+                        list.Add(token);
+                    }
                 }
             }
             return list;

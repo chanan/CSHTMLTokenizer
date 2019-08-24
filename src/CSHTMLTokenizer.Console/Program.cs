@@ -8,19 +8,8 @@ namespace CSHTMLTokenizer.Console
     {
         private static void Main(string[] args)
         {
-            string str = @"color: red;
-font-family: ""open sans"", serif;
-
-h1 {
-    color: pink;
-}
-
-h2 { color: blue; }
-
-@media only screen and (min-width: 320px) and (max-width: 480px) {
-    h1 {
-        color: green;
-    }
+            string str = @"@media only screen and (min-width: 320px) and (max-width: 480px) {
+    color: green;
 }";
 
             List<Line> lines = Tokenizer.Parse(str);

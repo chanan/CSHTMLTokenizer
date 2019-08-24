@@ -71,5 +71,10 @@ namespace CSHTMLTokenizer.Tokens
                     return string.Empty;
             }
         }
+
+        public override string ToString()
+        {
+            return ToHtml();
+        }
     }
 }

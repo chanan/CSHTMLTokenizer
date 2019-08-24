@@ -41,5 +41,10 @@ namespace CSHTMLTokenizer.Tokens
 
             return sb.ToString();
         }
+
+        public override string ToString()
+        {
+            return ToHtml();
+        }
     }
 }

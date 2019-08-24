@@ -20,5 +20,10 @@ namespace CSHTMLTokenizer.Tokens
         {
             _name.Append(ch);
         }
+
+        public override string ToString()
+        {
+            return ToHtml();
+        }
     }
 }

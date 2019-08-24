@@ -15,6 +15,11 @@ parts that are relevant to CSHTML tokenization is supported:
 * Variables in attributes @
 * Statements in attributes @(...)
 
+## CSS
+
+* Classes
+* Declarations
+
 ## Usage
 
 ```
